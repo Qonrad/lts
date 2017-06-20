@@ -33,10 +33,10 @@
 #define G_M   2	// Was previously almost always 2, McCarthy seems to have it at 4, gmi
 #define G_L   0.1
 #define G_SYN  0.5	//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
-#define TAUSYN 20		//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
+#define TAUSYN 15		//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
 #define USE_I_APP 1
 #define STARTTIME 1
-#define ENDTIME 1200	
+#define ENDTIME 2000
 #define STEPSIZE 0.05
 
 double current[C];	//external current variable, similar to how Canavier did it
@@ -99,11 +99,13 @@ derivs(double time, double *y, double *dydx) {
 	extern double current[];
 	
 	if (USE_I_APP) {
-		iapp = (time < 300 || time > 330) ? I_APP : 3.2;
+		iapp = (time < 300 || time > 400) ? I_APP : 3.2;
+		//if (time > 600 && time < 650) {iapp = 0;}
 	}
 	else {
 		iapp = I_APP;
 	}
+	printf("%f\n", iapp);
 	// (((y[V] - (-54)) / 4) < 10e-6) ? (0.32 * 4.0) :
 	current[I_NA] = G_NA * y[H] * pow(y[M], 3.0) * (y[V] - E_NA);
 	current[I_K] =  G_K * pow(y[NV], 4.0) * (y[V] - E_K);
