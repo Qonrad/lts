@@ -30,11 +30,11 @@
 #define E_SYN  -80.0
 #define G_NA 100.0 /* mS/cm2*/
 #define G_K   80.0
-#define G_M   4	// Was previously almost always 2, McCarthy seems to have it at 4, gmi
+#define G_M   2	// Was previously almost always 2, McCarthy seems to have it at 4, gmi
 #define G_L   0.1
-#define G_SYN  0.25/9	//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
-#define TAUSYN 10		//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
-#define USE_I_APP 0
+#define G_SYN  0.5	//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
+#define TAUSYN 20		//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
+#define USE_I_APP 1
 #define STARTTIME 1
 #define ENDTIME 1200	
 #define STEPSIZE 0.05
@@ -117,7 +117,7 @@ derivs(double time, double *y, double *dydx) {
 	dydx[H] = 0.128 * exp(-(y[V] + 50.0) / 18.0) * (1.0 - y[H]) - 4.0 / (1.0 + exp(-(y[V] + 27.0) / 5.0)) * y[H];   
 	dydx[NV] = ((fabs(((y[V] + 52)) / 5) < 10e-6) ? (0.032 * 5) : (f(y[V], 0.032, -52, 5.0) )) * (1.0 - y[NV]) - 0.5 * exp(-(y[V] + 57.0) / 40.0) * y[NV];
 	//0.032 * (y[V] + 52.0) / (1.0 - exp(-(y[V] + 52.0) / 5.0)) * (1.0 - y[NV]) - 0.5 * exp(-(y[V] + 57.0) / 40.0) * y[NV];  
-	dydx[MN] = ((fabs(((y[V] + 30)) / 9) < 10e-6) ? (3.209 * 0.0001 * 9.0) : (f(y[V], (3.209 * 0.0001), -30, 9.0) )) * ((1.0 - y[MN]) + ((fabs(((y[V] + 30)) / 9) < 10e-6) ? (3.209 * 0.0001 * -9.0) : (f(y[V], (3.209 * 0.0001), -30, -9.0) )) * y[MN]);
+	dydx[MN] = ((fabs(((y[V] + 30)) / 9) < 10e-6) ? (3.209 * 0.0001 * 9.0) : (f(y[V], (3.209 * 0.0001), -30, 9.0) )) * (1.0 - y[MN]) + (((fabs(((y[V] + 30)) / 9) < 10e-6) ? (3.209 * 0.0001 * -9.0) : (f(y[V], (3.209 * 0.0001), -30, -9.0) )) * y[MN]);
 	//above has -q in both approximation and formula, reexamine this!!!!
 	//3.209 * 0.0001 * ((y[V] + 30.0) / (1.0 - exp(-(y[V] + 30.0) / 9.0)) * (1.0 - y[MN]) + (y[V] + 30.0) / (1.0 - exp((y[V] + 30.0) / 9.0)) * y[MN]); 
 	
