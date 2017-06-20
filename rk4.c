@@ -23,7 +23,8 @@
 #define MN 4 
 #define S 5
 #define CM 1.00 /*uF/cm2*/
-#define I_APP 1.8 /*uA/cm2*/ //Conrad, should be 2.0
+#define I_APP 1.85 /*uA/cm2*/ //Conrad, should be 2.0
+#define I_APP_STEP -3.3
 #define E_NA  50.0
 #define E_K  -100.0
 #define E_L  -67.0
@@ -32,11 +33,18 @@
 #define G_K   80.0
 #define G_M   2	// Was previously almost always 2, McCarthy seems to have it at 4, gmi
 #define G_L   0.1
-#define G_SYN  0.25	//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
-#define TAUSYN 10		//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
+#define G_SYN  0.165	//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
+#define TAUSYN 5		//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
 #define USE_I_APP 1
-#define STARTTIME 1
-#define ENDTIME 2000
+#define I_APP_START 600
+#define I_APP_END 700
+#define USE_LOWPROPOFOL 1
+#define PROPOFOL_START 300
+#define PROPOFOL_END 2500
+#define LOWPROP_GSYN 0.25
+#define LOWPROP_TAU 10
+#define STARTTIME 0
+#define ENDTIME 3000
 #define STEPSIZE 0.05
 
 double current[C];	//external current variable, similar to how Canavier did it
@@ -95,23 +103,33 @@ inline double f(double v, double a, double th, double q) {
 }
 
 derivs(double time, double *y, double *dydx) { 
-	double iapp;
+	double iapp, gsyn, tau;
 	extern double current[];
 	
 	if (USE_I_APP) {
-		iapp = (time < 300 || time > 400) ? I_APP : -3.2;
+		iapp = (time < I_APP_START || time > I_APP_END) ? I_APP : I_APP_STEP;
 		//if (time > 600 && time < 650) {iapp = 0;}
 	}
 	else {
 		iapp = I_APP;
 	}
+	if (USE_LOWPROPOFOL) {
+		gsyn = (time < PROPOFOL_START || time > PROPOFOL_END) ? G_SYN : LOWPROP_GSYN;
+		tau = (time < PROPOFOL_START || time > PROPOFOL_END) ? TAUSYN : LOWPROP_TAU; 
+	}
+	else {
+		gsyn = G_SYN;
+		tau = TAUSYN;
+	}
+	
+	
 	printf("%f\n", iapp);
 	// (((y[V] - (-54)) / 4) < 10e-6) ? (0.32 * 4.0) :
 	current[I_NA] = G_NA * y[H] * pow(y[M], 3.0) * (y[V] - E_NA);
 	current[I_K] =  G_K * pow(y[NV], 4.0) * (y[V] - E_K);
 	current[I_M] =  G_M * y[MN] * (y[V] - E_K);
 	current[I_L] =  G_L * (y[V] - E_L);
-	current[I_S] =  G_SYN * y[S] * (y[V] - E_SYN);
+	current[I_S] =  gsyn * y[S] * (y[V] - E_SYN);
 	
 	dydx[V] = (iapp - current[I_NA] - current[I_K] - current[I_M] - current[I_L] - current[I_S]) / CM;
 	dydx[M] =  (( fabs(((y[V] + 54)) / 4) < 10e-6) ? (0.32 * 4.0) : ( f(y[V], 0.32, -54, 4.0) )) * (1.0 - y[M]) - ((fabs(((y[V] + 27)) / 5) < 10e-6) ? (-0.28 * -5) : ( f(y[V], -0.28, -27, -5.0) )) * y[M];
@@ -123,7 +141,7 @@ derivs(double time, double *y, double *dydx) {
 	//above has -q in both approximation and formula, reexamine this!!!!
 	//3.209 * 0.0001 * ((y[V] + 30.0) / (1.0 - exp(-(y[V] + 30.0) / 9.0)) * (1.0 - y[MN]) + (y[V] + 30.0) / (1.0 - exp((y[V] + 30.0) / 9.0)) * y[MN]); 
 	
-	dydx[S] = 2 * (1 + tanh(y[V] / 4.0)) * (1 - y[S]) - y[S] / TAUSYN; //2*(1+tanh(y[V1 + N*j]/4.0))*(1-y[S1 + N*j])-y[S1 + N*j]/TAUSYN;  
+	dydx[S] = 2 * (1 + tanh(y[V] / 4.0)) * (1 - y[S]) - y[S] / tau; //2*(1+tanh(y[V1 + N*j]/4.0))*(1-y[S1 + N*j])-y[S1 + N*j]/TAUSYN;  
 	
 }
 
