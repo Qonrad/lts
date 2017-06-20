@@ -36,15 +36,15 @@
 #define G_SYN  0.165	//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
 #define TAUSYN 5		//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
 #define USE_I_APP 1
-#define I_APP_START 600
-#define I_APP_END 700
+#define I_APP_START 1000
+#define I_APP_END 1100
 #define USE_LOWPROPOFOL 1
 #define PROPOFOL_START 300
-#define PROPOFOL_END 2500
+#define PROPOFOL_END 4500
 #define LOWPROP_GSYN 0.25
 #define LOWPROP_TAU 10
 #define STARTTIME 0
-#define ENDTIME 3000
+#define ENDTIME 5000
 #define STEPSIZE 0.05
 
 double current[C];	//external current variable, similar to how Canavier did it
