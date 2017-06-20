@@ -32,8 +32,8 @@
 #define G_K   80.0
 #define G_M   2	// Was previously almost always 2, McCarthy seems to have it at 4, gmi
 #define G_L   0.1
-#define G_SYN  0.5	//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
-#define TAUSYN 15		//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
+#define G_SYN  0.25	//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
+#define TAUSYN 10		//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
 #define USE_I_APP 1
 #define STARTTIME 1
 #define ENDTIME 2000
@@ -99,7 +99,7 @@ derivs(double time, double *y, double *dydx) {
 	extern double current[];
 	
 	if (USE_I_APP) {
-		iapp = (time < 300 || time > 400) ? I_APP : 3.2;
+		iapp = (time < 300 || time > 400) ? I_APP : -3.2;
 		//if (time > 600 && time < 650) {iapp = 0;}
 	}
 	else {
