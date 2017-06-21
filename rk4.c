@@ -46,7 +46,7 @@
 #define STARTTIME 0
 #define ENDTIME 2200
 #define STEPSIZE 0.05
-#define DELAY 10.0 //delay must evenly divide stepsize!
+#define DELAY 10.0 //delay must evenly divide stepsize, and it is only used if it is >= stepsize
 
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
@@ -142,8 +142,12 @@ derivs(double time, double *y, double *dydx, double *oldv) {
 	dydx[MN] = ((fabs(((y[V] + 30)) / 9) < 10e-6) ? (3.209 * 0.0001 * 9.0) : (f(y[V], (3.209 * 0.0001), -30, 9.0) )) * (1.0 - y[MN]) + (((fabs(((y[V] + 30)) / 9) < 10e-6) ? (3.209 * 0.0001 * -9.0) : (f(y[V], (3.209 * 0.0001), -30, -9.0) )) * y[MN]);
 	//above has -q in both approximation and formula, reexamine this!!!!
 	//3.209 * 0.0001 * ((y[V] + 30.0) / (1.0 - exp(-(y[V] + 30.0) / 9.0)) * (1.0 - y[MN]) + (y[V] + 30.0) / (1.0 - exp((y[V] + 30.0) / 9.0)) * y[MN]); 
-	
-	dydx[S] = 2 * (1 + tanh(*oldv / 4.0)) * (1 - y[S]) - y[S] / tau; //uses *oldv which should be del, the delay pointer in the buffer
+	if (DELAY >= STEPSIZE) {
+		dydx[S] = 2 * (1 + tanh(*oldv / 4.0)) * (1 - y[S]) - y[S] / tau; //uses *oldv which should be del, the delay pointer in the buffer
+	}
+	else {
+		dydx[S] = 2 * (1 + tanh(y[V] / 4.0)) * (1 - y[S]) - y[S] / tau;
+	}
 	//2*(1+tanh(y[V1 + N*j]/4.0))*(1-y[S1 + N*j])-y[S1 + N*j]/TAUSYN;  
 	
 }
@@ -304,9 +308,9 @@ int main() {
 		
 	}
 	for (k = 0; k < nstep; k++) {
-		printf("%d", bufpos);
+		//printf("%d", bufpos);
 		del = &buf[bufpos];
-		printf("	%f\n", *del);
+		//printf("	%f\n", *del);
 		derivs(time, v, dv, del);
 		rk4(v, dv, N, time, STEPSIZE, vout, del);
 		*del = vout[0];
