@@ -23,8 +23,8 @@
 #define MN 4 
 #define S 5
 #define CM 1.00 /*uF/cm2*/
-#define I_APP 1.8 /*uA/cm2*/ //Conrad, should be 2.0
-#define I_APP_STEP -3.3
+#define I_APP 1.81 /*uA/cm2*/ //Conrad, should be 2.0
+#define I_APP_STEP 3.3
 #define E_NA  50.0
 #define E_K  -100.0
 #define E_L  -67.0
@@ -38,13 +38,16 @@
 #define USE_I_APP 1
 #define I_APP_START 1000
 #define I_APP_END 1001
-#define USE_LOWPROPOFOL 1
+#define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
+#define USE_HIGHPROPOFOL 0
 #define PROPOFOL_START 300
 #define PROPOFOL_END 4500
 #define LOWPROP_GSYN 0.25
 #define LOWPROP_TAU 10
+#define HIGHPROP_GSYN 0.5
+#define HIGHPROP_TAU 20
 #define STARTTIME 0
-#define ENDTIME 2200
+#define ENDTIME 4700
 #define STEPSIZE 0.05
 #define DELAY 10.0 //delay must evenly divide stepsize, and it is only used if it is >= stepsize
 
@@ -110,7 +113,7 @@ derivs(double time, double *y, double *dydx, double *oldv) {
 	
 	if (USE_I_APP) {
 		iapp = (time < I_APP_START || time > I_APP_END) ? I_APP : I_APP_STEP;
-		//if (time > 600 && time < 650) {iapp = 0;}
+		
 	}
 	else {
 		iapp = I_APP;
@@ -118,6 +121,10 @@ derivs(double time, double *y, double *dydx, double *oldv) {
 	if (USE_LOWPROPOFOL) {
 		gsyn = (time < PROPOFOL_START || time > PROPOFOL_END) ? G_SYN : LOWPROP_GSYN;
 		tau = (time < PROPOFOL_START || time > PROPOFOL_END) ? TAUSYN : LOWPROP_TAU; 
+	}
+	else if (USE_HIGHPROPOFOL) {
+		gsyn = (time < PROPOFOL_START || time > PROPOFOL_END) ? G_SYN : HIGHPROP_GSYN;
+		tau = (time < PROPOFOL_START || time > PROPOFOL_END) ? TAUSYN : HIGHPROP_TAU; 
 	}
 	else {
 		gsyn = G_SYN;
@@ -184,58 +191,24 @@ void rk4(double y[], double dydx[], int n, double x, double h, double yout[], do
 	hh = h * 0.5;
 	h6 = h / 6.0;
 	xh = x + hh;
-	//~ printf("before 1st step, uses y, hh, dydx, adds to yt time = %f\n", x); //these are all print statements for debugging
-	//~ printf("y\n");
-	//~ printdarr(y, N);
-	//~ printf("yt\n");
-	//~ printdarr(yt, N);
-	//~ printf("dydx\n");
-	//~ printdarr(dydx, N);
-	//~ printf("dyt\n");
-	//~ printdarr(dyt, N);
+	
 	for (i = 0; i < n; i++) {			//first step
 		yt[i] = y[i] + hh * dydx[i];
 	}
-	//~ printf("before 1st step, derivs(xh, yt, dyt); time = %f\n", x);
-	//~ printf("y\n");
-	//~ printdarr(y, N);
-	//~ printf("yt\n");
-	//~ printdarr(yt, N);
-	//~ printf("dydx\n");
-	//~ printdarr(dydx, N);
-	//~ printf("dyt\n");
-	//~ printdarr(dyt, N);
+	
 	derivs(xh, yt, dyt, oldv);				//second step
 	
 	for (i = 0; i < n; i++) {
 		yt[i] = y[i] + hh * dyt[i];
 	}
-	//~ printf("before 3rd step, uses xh, yt, dym time = %f\n", x);
-	//~ printf("y\n");
-	//~ printdarr(y, N);
-	//~ printf("yt\n");
-	//~ printdarr(yt, N);
-	//~ printf("dydx\n");
-	//~ printdarr(dydx, N);
-	//~ printf("dyt\n");
-	//~ printdarr(dyt, N);
-	//~ printf("dym\n");
-	//~ printdarr(dym, N);
+	
 	derivs(xh, yt, dym, oldv);				//third step
 	
 	for (i = 0; i < n; i++) {
 		yt[i] = y[i] + h * dym[i];
 		dym[i] += dyt[i];
 	}
-	//~ printf("before 4th step, derivs(x + h, yt, dyt); time = %f\n", x);
-	//~ printf("y\n");
-	//~ printdarr(y, N);
-	//~ printf("yt\n");
-	//~ printdarr(yt, N);
-	//~ printf("dydx\n");
-	//~ printdarr(dydx, N);
-	//~ printf("dyt\n");
-	//~ printdarr(dyt, N);
+	
 	derivs(x + h, yt, dyt, oldv);			//fourth step
 	
 	for (i = 0; i < n; i++) {			//Accumulate increments with proper weights.
@@ -271,10 +244,7 @@ int main() {
 	int bufpos;				//holds the position in the buffer that the del  pointer is at
 	
 	nstep = (ENDTIME - STARTTIME) / STEPSIZE;	// This assumes the entime is evenly divisible by the stepsize, which should always be true I think
-/*	y = (double**) malloc(sizeof(double) * N * (nstep + 1) + sizeof(double*)*(nstep+1));
-	for(i=0;i<(nstep+1);i++)
-		y[i]=(double*)(y
-*/
+
 	
 	y = (double**) malloc(sizeof(double*) * (nstep + 1));
 	for (i = 0; i < (nstep + 1); i++) {
@@ -308,16 +278,12 @@ int main() {
 		
 	}
 	for (k = 0; k < nstep; k++) {
-		//printf("%d", bufpos);
 		del = &buf[bufpos];
-		//printf("	%f\n", *del);
 		derivs(time, v, dv, del);
 		rk4(v, dv, N, time, STEPSIZE, vout, del);
 		*del = vout[0];
 		time += STEPSIZE;
-		//~ printf("time = %f\n", time);
 		xx[k + 1] = time;
-		//printf("%f %f\n", time, vout[0]);
 		
 		if (bufpos < dsteps - 1) {	//increments bufpos within the buffer each step
 			bufpos++;
@@ -327,10 +293,6 @@ int main() {
 		}
 		
 		for (i = 0; i < N; i++) {
-			//~ printf("v\n");
-			//~ printdarr(v, N);
-			//~ printf("vout\n");
-			//~ printdarr(vout, N);
 			v[i] = vout[i];
 			y[k + 1][i] = v[i];
 		}
