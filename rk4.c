@@ -23,7 +23,7 @@
 #define MN 4 
 #define S 5
 #define CM 1.00 /*uF/cm2*/
-#define I_APP 1.81 /*uA/cm2*/ //Conrad, should be 2.0
+#define I_APP 1.81 /*uA/cm2*/ 
 #define I_APP_STEP 3.3
 #define E_NA  50.0
 #define E_K  -100.0
@@ -31,17 +31,17 @@
 #define E_SYN  -80.0
 #define G_NA 100.0 /* mS/cm2*/
 #define G_K   80.0
-#define G_M   2	// Was previously almost always 2, McCarthy seems to have it at 4, gmi
+#define G_M   2				// Was previously almost always 2, McCarthy paper says "between 0 and 4", gmi
 #define G_L   0.1
-#define G_SYN  0.165	//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
-#define TAUSYN 10		//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
+#define G_SYN  0.165		//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
+#define TAUSYN 10			//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
 #define USE_I_APP 1
 #define I_APP_START 1000
 #define I_APP_END 1001
 #define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
 #define USE_HIGHPROPOFOL 0
 #define PROPOFOL_START 300
-#define PROPOFOL_END 4500
+#define PROPOFOL_END 4000
 #define LOWPROP_GSYN 0.25
 #define LOWPROP_TAU 10
 #define HIGHPROP_GSYN 0.5
@@ -49,7 +49,10 @@
 #define STARTTIME 0
 #define ENDTIME 4700
 #define STEPSIZE 0.05
-#define DELAY 10.0 //delay must evenly divide stepsize, and it is only used if it is >= stepsize
+#define DELAY 10.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
+#define THRESHOLD 10.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
+#define SAMPLESIZE 30 		//number of periods that are averaged together to give unperturbed period
+#define OFFSET 10			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
@@ -118,6 +121,7 @@ derivs(double time, double *y, double *dydx, double *oldv) {
 	else {
 		iapp = I_APP;
 	}
+	
 	if (USE_LOWPROPOFOL) {
 		gsyn = (time < PROPOFOL_START || time > PROPOFOL_END) ? G_SYN : LOWPROP_GSYN;
 		tau = (time < PROPOFOL_START || time > PROPOFOL_END) ? TAUSYN : LOWPROP_TAU; 
@@ -225,27 +229,56 @@ void makedata(double** y, double *xx, int nstep, int var, const char *filename) 
 	FILE *fopen(),*fp;
 	fp = fopen(filename, "w");
 	for (i = 0; i < nstep + 1; i++) {
-		//~ printf("%f %f\n", xx[i], y[i][var]);
 		fprintf(fp, "%f %f\n", xx[i], y[i][var]);
 	}
 	fclose(fp);
 }
 
+double calculateSD(double data[], int ndatas) {
+    double sum = 0.0, mean, standardDeviation = 0.0;
+	int i;
+    
+    for(i = 0; i < ndatas; ++i) {
+        sum += data[i];
+    }
+
+    mean = sum / ndatas;
+
+    for(i=0; i < ndatas; ++i) {
+        standardDeviation += pow(data[i] - mean, 2);
+	}
+
+    return sqrt(standardDeviation / ndatas);
+}
+
 int main() {
+	//Variables to do with simulation
 	int i, k;
 	double time;
 	double *v, *vout, *dv;	//v = variables (state and current), vout = output variables, dv = derivatives (fstate)
 	double **y, *xx; 		//results variables, y[1..N][1..NSTEP+1], xx[1..NSTEP+1]
 	int nstep;				//number of steps necessary to reach ENDTIME from STARTTIME at the defined STEPSIZE
 	extern double current[];	//external variable declaration
-	int dsteps = (int)(DELAY / STEPSIZE);
+	
+	//Variables to do with delay
+	int dsteps = (int)(DELAY / STEPSIZE);		//number of steps in the delay (i.e. number of elements in the buffer)
 	double buf[dsteps];
 	del = buf;
 	int bufpos;				//holds the position in the buffer that the del  pointer is at
 	
+	//Variables to do with PRC measurements
+	double normalperiod;					//unperturbed period of the oscillation, difference between snd_time and fst_time;
+	int psteps;								//number of steps in the unperturbed period
+	double sptimes[SAMPLESIZE + OFFSET];	//array of times of spiking, differences will be averaged to find unperturbed period of oscillation
+	int spikecount = 0;						//holds the location the simulation has reached in sptimes
+	double spdiffs[SAMPLESIZE - 1];//array of differences in the times of spiking, averaged to find the normalperiod
+	double sumdiffs = 0;					//holds the sum of differences in times of sptimes, used for averaging
+	double periodsd;						//standard deviation of the averaged periods
+	
 	nstep = (ENDTIME - STARTTIME) / STEPSIZE;	// This assumes the entime is evenly divisible by the stepsize, which should always be true I think
 
 	
+	//Allocating memory for the arrays used in the calculations, maybe should switch to using stack instead of heap memory...
 	y = (double**) malloc(sizeof(double*) * (nstep + 1));
 	for (i = 0; i < (nstep + 1); i++) {
 		y[i] = (double*) malloc(sizeof(double) * N);
@@ -260,15 +293,16 @@ int main() {
 	time = STARTTIME;
 	scan_(v);				//scanning in initial variables (state variables only) 
 	
-	for (i = 0; i < (dsteps); ++i) {//sets every double in buffer to be equal to the steady state (initial) voltage
+	for (i = 0; i < (dsteps); ++i) {//sets every double in buffer to be equal to the steady state (initial) voltage that was just scanned in
 		buf[i] = v[0];
+	}
+	for (i = 0; i < (SAMPLESIZE + 10); ++i) {
+		sptimes[i] = -1.0;
 	}
 	
 	derivs(time, v, dv, del);
 	
 	rk4(v, dv, N, time, STEPSIZE, vout, del);
-	//~ printdarr(v, N);
-	//~ return 0;
 	
 	
 	xx[0] = STARTTIME;		
@@ -278,10 +312,18 @@ int main() {
 		
 	}
 	for (k = 0; k < nstep; k++) {
-		del = &buf[bufpos];
+		del = &buf[bufpos]; //moves the pointer one step ahead in the buffer
 		derivs(time, v, dv, del);
 		rk4(v, dv, N, time, STEPSIZE, vout, del);
 		*del = vout[0];
+		
+		if (vout[0] >= THRESHOLD && v[0] < THRESHOLD) {
+			if (spikecount < (SAMPLESIZE + OFFSET)) {
+				sptimes[spikecount] = time;
+			}
+			++spikecount;			//incremented at the end so it can be used as position in sptimes			
+		}
+				
 		time += STEPSIZE;
 		xx[k + 1] = time;
 		
@@ -296,19 +338,33 @@ int main() {
 			v[i] = vout[i];
 			y[k + 1][i] = v[i];
 		}
-		
 	}
-	//~ printdarr(xx, nstep);
-	//~ for (i = 0; i < (nstep + 1); i++) {		//commented out b/c it's causing errors and I don't know why :(
-		//~ free(y[i]);
-	//~ }
+	printf("This simulation counted %d spikes in all.\n", spikecount);
+	if (spikecount >= (SAMPLESIZE + OFFSET)) {
+		for (i = OFFSET; i < SAMPLESIZE + OFFSET - 1; ++i) {		//calculates differences between spike times to find each period
+			sumdiffs += sptimes[i + 1] - sptimes[i];
+			spdiffs[i - OFFSET] = sptimes[i + 1] - sptimes[i];
+		}
+		normalperiod = sumdiffs / SAMPLESIZE;
+		psteps = normalperiod / STEPSIZE;
+		periodsd = calculateSD(spdiffs, SAMPLESIZE - 1);
+		printdarr(spdiffs, SAMPLESIZE - 1);
+		printf("The average unperturbed period is %f, which is approximately %d steps.\n", normalperiod, psteps);
+		printf("The standard deviation is %f.\n", periodsd);
+	}
+	else {
+		printf("There are not enough spikes to account for sample size and offset or something else has gone wrong.\n");
+	}
 	
 	makedata(y, xx, nstep, V, "v.data");
 	makedata(y, xx, nstep, M, "m.data");
 	makedata(y, xx, nstep, H, "h.data");
 	makedata(y, xx, nstep, NV, "n.data");
 	
-	
+	//~ for (i = 0; i < (nstep + 1); i++) {		//commented out b/c it's causing errors and I don't know why :(
+		//~ free(y[i]);
+	//~ }
+		
 	//~ free(current);
 	dump_(vout);
 	free(v);
