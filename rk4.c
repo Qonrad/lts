@@ -23,7 +23,7 @@
 #define MN 4 
 #define S 5
 #define CM 1.00 /*uF/cm2*/
-#define I_APP 1.85 /*uA/cm2*/ //Conrad, should be 2.0
+#define I_APP 1.8 /*uA/cm2*/ //Conrad, should be 2.0
 #define I_APP_STEP -3.3
 #define E_NA  50.0
 #define E_K  -100.0
@@ -34,20 +34,22 @@
 #define G_M   2	// Was previously almost always 2, McCarthy seems to have it at 4, gmi
 #define G_L   0.1
 #define G_SYN  0.165	//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
-#define TAUSYN 5		//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
+#define TAUSYN 10		//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
 #define USE_I_APP 1
 #define I_APP_START 1000
-#define I_APP_END 1100
+#define I_APP_END 1001
 #define USE_LOWPROPOFOL 1
 #define PROPOFOL_START 300
 #define PROPOFOL_END 4500
 #define LOWPROP_GSYN 0.25
 #define LOWPROP_TAU 10
 #define STARTTIME 0
-#define ENDTIME 5000
+#define ENDTIME 2200
 #define STEPSIZE 0.05
+#define DELAY 10.0 //delay must evenly divide stepsize!
 
 double current[C];	//external current variable, similar to how Canavier did it
+static double *del;
 /*
 int deriv_(double *xp, double *Y, double *F) {
 	extern double current[C*NN]; 
@@ -102,7 +104,7 @@ inline double f(double v, double a, double th, double q) {
 	return a * ((v - th) / (1 - exp(-(v - th) / q)));
 }
 
-derivs(double time, double *y, double *dydx) { 
+derivs(double time, double *y, double *dydx, double *oldv) { 
 	double iapp, gsyn, tau;
 	extern double current[];
 	
@@ -123,7 +125,7 @@ derivs(double time, double *y, double *dydx) {
 	}
 	
 	
-	printf("%f\n", iapp);
+	//printf("%f\n", iapp);
 	// (((y[V] - (-54)) / 4) < 10e-6) ? (0.32 * 4.0) :
 	current[I_NA] = G_NA * y[H] * pow(y[M], 3.0) * (y[V] - E_NA);
 	current[I_K] =  G_K * pow(y[NV], 4.0) * (y[V] - E_K);
@@ -141,7 +143,8 @@ derivs(double time, double *y, double *dydx) {
 	//above has -q in both approximation and formula, reexamine this!!!!
 	//3.209 * 0.0001 * ((y[V] + 30.0) / (1.0 - exp(-(y[V] + 30.0) / 9.0)) * (1.0 - y[MN]) + (y[V] + 30.0) / (1.0 - exp((y[V] + 30.0) / 9.0)) * y[MN]); 
 	
-	dydx[S] = 2 * (1 + tanh(y[V] / 4.0)) * (1 - y[S]) - y[S] / tau; //2*(1+tanh(y[V1 + N*j]/4.0))*(1-y[S1 + N*j])-y[S1 + N*j]/TAUSYN;  
+	dydx[S] = 2 * (1 + tanh(*oldv / 4.0)) * (1 - y[S]) - y[S] / tau; //uses *oldv which should be del, the delay pointer in the buffer
+	//2*(1+tanh(y[V1 + N*j]/4.0))*(1-y[S1 + N*j])-y[S1 + N*j]/TAUSYN;  
 	
 }
 
@@ -165,7 +168,7 @@ void dump_(double Y[]) {
 	fclose(sp);
 }
 
-void rk4(double y[], double dydx[], int n, double x, double h, double yout[]) {
+void rk4(double y[], double dydx[], int n, double x, double h, double yout[], double *oldv) {
 	int i;
 	double xh, hh, h6, *dym, *dyt, *yt;
 	
@@ -198,7 +201,7 @@ void rk4(double y[], double dydx[], int n, double x, double h, double yout[]) {
 	//~ printdarr(dydx, N);
 	//~ printf("dyt\n");
 	//~ printdarr(dyt, N);
-	derivs(xh, yt, dyt);				//second step
+	derivs(xh, yt, dyt, oldv);				//second step
 	
 	for (i = 0; i < n; i++) {
 		yt[i] = y[i] + hh * dyt[i];
@@ -214,7 +217,7 @@ void rk4(double y[], double dydx[], int n, double x, double h, double yout[]) {
 	//~ printdarr(dyt, N);
 	//~ printf("dym\n");
 	//~ printdarr(dym, N);
-	derivs(xh, yt, dym);				//third step
+	derivs(xh, yt, dym, oldv);				//third step
 	
 	for (i = 0; i < n; i++) {
 		yt[i] = y[i] + h * dym[i];
@@ -229,7 +232,7 @@ void rk4(double y[], double dydx[], int n, double x, double h, double yout[]) {
 	//~ printdarr(dydx, N);
 	//~ printf("dyt\n");
 	//~ printdarr(dyt, N);
-	derivs(x + h, yt, dyt);			//fourth step
+	derivs(x + h, yt, dyt, oldv);			//fourth step
 	
 	for (i = 0; i < n; i++) {			//Accumulate increments with proper weights.
 		yout[i] = y[i] + h6 * (dydx[i] + dyt[i] + 2.0 * dym[i]);
@@ -258,13 +261,17 @@ int main() {
 	double **y, *xx; 		//results variables, y[1..N][1..NSTEP+1], xx[1..NSTEP+1]
 	int nstep;				//number of steps necessary to reach ENDTIME from STARTTIME at the defined STEPSIZE
 	extern double current[];	//external variable declaration
+	int dsteps = (int)(DELAY / STEPSIZE);
+	double buf[dsteps];
+	del = buf;
+	int bufpos;				//holds the position in the buffer that the del  pointer is at
 	
 	nstep = (ENDTIME - STARTTIME) / STEPSIZE;	// This assumes the entime is evenly divisible by the stepsize, which should always be true I think
 /*	y = (double**) malloc(sizeof(double) * N * (nstep + 1) + sizeof(double*)*(nstep+1));
 	for(i=0;i<(nstep+1);i++)
 		y[i]=(double*)(y
 */
-
+	
 	y = (double**) malloc(sizeof(double*) * (nstep + 1));
 	for (i = 0; i < (nstep + 1); i++) {
 		y[i] = (double*) malloc(sizeof(double) * N);
@@ -278,9 +285,14 @@ int main() {
 	
 	time = STARTTIME;
 	scan_(v);				//scanning in initial variables (state variables only) 
-	derivs(time, v, dv);
 	
-	rk4(v, dv, N, time, STEPSIZE, vout);
+	for (i = 0; i < (dsteps); ++i) {//sets every double in buffer to be equal to the steady state (initial) voltage
+		buf[i] = v[0];
+	}
+	
+	derivs(time, v, dv, del);
+	
+	rk4(v, dv, N, time, STEPSIZE, vout, del);
 	//~ printdarr(v, N);
 	//~ return 0;
 	
@@ -292,12 +304,24 @@ int main() {
 		
 	}
 	for (k = 0; k < nstep; k++) {
-		derivs(time, v, dv);
-		rk4(v, dv, N, time, STEPSIZE, vout);
+		printf("%d", bufpos);
+		del = &buf[bufpos];
+		printf("	%f\n", *del);
+		derivs(time, v, dv, del);
+		rk4(v, dv, N, time, STEPSIZE, vout, del);
+		*del = vout[0];
 		time += STEPSIZE;
 		//~ printf("time = %f\n", time);
 		xx[k + 1] = time;
-		printf("%f %f\n", time, vout[0]);
+		//printf("%f %f\n", time, vout[0]);
+		
+		if (bufpos < dsteps - 1) {	//increments bufpos within the buffer each step
+			bufpos++;
+		}
+		else {
+			bufpos = 0;
+		}
+		
 		for (i = 0; i < N; i++) {
 			//~ printf("v\n");
 			//~ printdarr(v, N);
