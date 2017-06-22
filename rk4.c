@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define N 6
+#define N 7
 #define C 5
 #define I_NA 0  
 #define I_K 1 
@@ -22,6 +22,7 @@
 #define NV 3 
 #define MN 4 
 #define S 5
+#define P 6
 #define CM 1.00 /*uF/cm2*/
 #define I_APP 1.81 /*uA/cm2*/ 
 #define I_APP_STEP 3.3
@@ -51,7 +52,7 @@
 #define STEPSIZE 0.05
 #define DELAY 10.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD 10.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
-#define SAMPLESIZE 30 		//number of periods that are averaged together to give unperturbed period
+#define SAMPLESIZE 30 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 10			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 
 double current[C];	//external current variable, similar to how Canavier did it
@@ -130,19 +131,19 @@ derivs(double time, double *y, double *dydx, double *oldv) {
 		gsyn = (time < PROPOFOL_START || time > PROPOFOL_END) ? G_SYN : HIGHPROP_GSYN;
 		tau = (time < PROPOFOL_START || time > PROPOFOL_END) ? TAUSYN : HIGHPROP_TAU; 
 	}
-	else {
+	else {	
 		gsyn = G_SYN;
 		tau = TAUSYN;
 	}
 	
-	
+	//First cell. It is self-connected and the one that is measured for the PRC.
 	//printf("%f\n", iapp);
 	// (((y[V] - (-54)) / 4) < 10e-6) ? (0.32 * 4.0) :
 	current[I_NA] = G_NA * y[H] * pow(y[M], 3.0) * (y[V] - E_NA);
 	current[I_K] =  G_K * pow(y[NV], 4.0) * (y[V] - E_K);
 	current[I_M] =  G_M * y[MN] * (y[V] - E_K);
 	current[I_L] =  G_L * (y[V] - E_L);
-	current[I_S] =  gsyn * y[S] * (y[V] - E_SYN);
+	current[I_S] =  gsyn * (y[S] + y[P])* (y[V] - E_SYN);
 	
 	dydx[V] = (iapp - current[I_NA] - current[I_K] - current[I_M] - current[I_L] - current[I_S]) / CM;
 	dydx[M] =  (( fabs(((y[V] + 54)) / 4) < 10e-6) ? (0.32 * 4.0) : ( f(y[V], 0.32, -54, 4.0) )) * (1.0 - y[M]) - ((fabs(((y[V] + 27)) / 5) < 10e-6) ? (-0.28 * -5) : ( f(y[V], -0.28, -27, -5.0) )) * y[M];
@@ -159,8 +160,8 @@ derivs(double time, double *y, double *dydx, double *oldv) {
 	else {
 		dydx[S] = 2 * (1 + tanh(y[V] / 4.0)) * (1 - y[S]) - y[S] / tau;
 	}
+	dydx[P] = 0.0;
 	//2*(1+tanh(y[V1 + N*j]/4.0))*(1-y[S1 + N*j])-y[S1 + N*j]/TAUSYN;  
-	
 }
 
 void scan_(double *Y) {
@@ -251,33 +252,50 @@ double calculateSD(double data[], int ndatas) {
     return sqrt(standardDeviation / ndatas);
 }
 
+// This function is inefficient and should be optimized.
+int snapshot(double** y, double *xx, int nstep, int var, double timestart, double timestop, double *snap) {
+	int i, place = 0;
+	for (i = 0; i < nstep + 1; ++i) {
+		if (timestart < xx[i] && xx[i] < timestop) {
+			snap[place] = y[i][var];
+			place++;
+		}
+	}
+	return 0;
+}
+
 int main() {
 	//Variables to do with simulation
 	int i, k;
 	double time;
-	double *v, *vout, *dv;	//v = variables (state and current), vout = output variables, dv = derivatives (fstate)
-	double **y, *xx; 		//results variables, y[1..N][1..NSTEP+1], xx[1..NSTEP+1]
-	int nstep;				//number of steps necessary to reach ENDTIME from STARTTIME at the defined STEPSIZE
-	extern double current[];	//external variable declaration
+	double *v, *vout, *dv;					//v = variables (state and current), vout = output variables, dv = derivatives (fstate)
+	double **y, *xx; 						//results variables, y[1..N][1..NSTEP+1], xx[1..NSTEP+1]
+	int nstep;								//number of steps necessary to reach ENDTIME from STARTTIME at the defined STEPSIZE
+	extern double current[];				//external variable declaration
 	
 	//Variables to do with delay
-	int dsteps = (int)(DELAY / STEPSIZE);		//number of steps in the delay (i.e. number of elements in the buffer)
+	int dsteps = (int)(DELAY / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
 	double buf[dsteps];
 	del = buf;
-	int bufpos;				//holds the position in the buffer that the del  pointer is at
+	int bufpos;								//holds the position in the buffer that the del  pointer is at
 	
-	//Variables to do with PRC measurements
+	//Variables to do with initial PRC measurements
 	double normalperiod;					//unperturbed period of the oscillation, difference between snd_time and fst_time;
 	int psteps;								//number of steps in the unperturbed period
 	double sptimes[SAMPLESIZE + OFFSET];	//array of times of spiking, differences will be averaged to find unperturbed period of oscillation
 	int spikecount = 0;						//holds the location the simulation has reached in sptimes
-	double spdiffs[SAMPLESIZE - 1];//array of differences in the times of spiking, averaged to find the normalperiod
+	double spdiffs[SAMPLESIZE - 1];			//array of differences in the times of spiking, averaged to find the normalperiod
 	double sumdiffs = 0;					//holds the sum of differences in times of sptimes, used for averaging
 	double periodsd;						//standard deviation of the averaged periods
 	
+	//Variables for storing spike snapshot
+	double fthresh = -1.0;					//time at which voltage crosses threshold on the way up
+	double sndthresh = -1.0;				//time at which voltage crosses threshold on the way down
+	int snapshotlen;						//length of snapshot array
+	
+	
 	nstep = (ENDTIME - STARTTIME) / STEPSIZE;	// This assumes the entime is evenly divisible by the stepsize, which should always be true I think
 
-	
 	//Allocating memory for the arrays used in the calculations, maybe should switch to using stack instead of heap memory...
 	y = (double**) malloc(sizeof(double*) * (nstep + 1));
 	for (i = 0; i < (nstep + 1); i++) {
@@ -288,16 +306,12 @@ int main() {
 	v = (double*) malloc(sizeof(double) * N);
 	dv = (double*) malloc(sizeof(double) * N);
 	vout = (double*) malloc(sizeof(double) * N);
-	
-	
+		
 	time = STARTTIME;
 	scan_(v);				//scanning in initial variables (state variables only) 
 	
 	for (i = 0; i < (dsteps); ++i) {//sets every double in buffer to be equal to the steady state (initial) voltage that was just scanned in
 		buf[i] = v[0];
-	}
-	for (i = 0; i < (SAMPLESIZE + 10); ++i) {
-		sptimes[i] = -1.0;
 	}
 	
 	derivs(time, v, dv, del);
@@ -323,6 +337,15 @@ int main() {
 			}
 			++spikecount;			//incremented at the end so it can be used as position in sptimes			
 		}
+		
+		if (spikecount > OFFSET) {	//finding time of threshold crossings for snapshot
+			if (fthresh == -1.0 && vout[0] >= -50.0 && v[0] < -50.0) {
+				fthresh = time;
+			}
+			else if (fthresh != -1.0 && sndthresh == -1.0 && vout[0] <= -50.0 && v[0] > -50.0) {
+				sndthresh = time;
+			}
+		}
 				
 		time += STEPSIZE;
 		xx[k + 1] = time;
@@ -339,6 +362,7 @@ int main() {
 			y[k + 1][i] = v[i];
 		}
 	}
+	
 	printf("This simulation counted %d spikes in all.\n", spikecount);
 	if (spikecount >= (SAMPLESIZE + OFFSET)) {
 		for (i = OFFSET; i < SAMPLESIZE + OFFSET - 1; ++i) {		//calculates differences between spike times to find each period
@@ -348,13 +372,20 @@ int main() {
 		normalperiod = sumdiffs / SAMPLESIZE;
 		psteps = normalperiod / STEPSIZE;
 		periodsd = calculateSD(spdiffs, SAMPLESIZE - 1);
-		printdarr(spdiffs, SAMPLESIZE - 1);
+		//printdarr(spdiffs, SAMPLESIZE - 1);
 		printf("The average unperturbed period is %f, which is approximately %d steps.\n", normalperiod, psteps);
 		printf("The standard deviation is %f.\n", periodsd);
 	}
 	else {
 		printf("There are not enough spikes to account for sample size and offset or something else has gone wrong.\n");
 	}
+	printf("fthresh = %f and sndthresh = %f\n", fthresh, sndthresh);
+	
+	snapshotlen = (int)((sndthresh - fthresh) / STEPSIZE);
+	double vsnapshot[snapshotlen];						//voltage snapshot from -50 to -50
+	snapshot(y, xx, nstep, V, fthresh, sndthresh, vsnapshot);
+	printf("The snapshot contains %d steps.\n", snapshotlen);
+	printdarr(vsnapshot, snapshotlen);
 	
 	makedata(y, xx, nstep, V, "v.data");
 	makedata(y, xx, nstep, M, "m.data");
