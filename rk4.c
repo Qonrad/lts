@@ -273,16 +273,16 @@ void snapshot(double** y, double *xx, int nstep, int var, double timestart, doub
 			place++;
 		}
 	}
-	return 0;
+	return;
 }
 
 int main() {
 	//Variables to do with simulation
+	int nstep = (ENDTIME - STARTTIME) / STEPSIZE;	// This assumes the entime is evenly divisible by the stepsize, which should always be true I think
 	int i, k;
 	double time;
-	double *v, *vout, *dv;					//v = variables (state and current), vout = output variables, dv = derivatives (fstate)
-	double **y, *xx; 						//results variables, y[1..N][1..NSTEP+1], xx[1..NSTEP+1]
-	int nstep;								//number of steps necessary to reach ENDTIME from STARTTIME at the defined STEPSIZE
+	double v[N], vout[N], dv[N];					//v = variables (state and current), vout = output variables, dv = derivatives (fstate)
+	double **y, xx[nstep + 1]; 						//results variables, y[1..N][1..NSTEP+1], xx[1..NSTEP+1]
 	extern double current[];				//external variable declaration
 	
 	//Variables to do with delay
@@ -304,24 +304,14 @@ int main() {
 	double fthresh = -1.0;					//time at which voltage crosses threshold on the way up
 	double sndthresh = -1.0;				//time at which voltage crosses threshold on the way down
 	Template spike;
-	//~ int vsnapshotlen;						//length of voltage snapshot array
-	//~ double quickshot[N];					//saves the state of state variables at the beginning of the snapshot
-	//~ double bufshot[dsteps];					//saves state of the buffer at the beginning of the snapshot
-	
-	
-	nstep = (ENDTIME - STARTTIME) / STEPSIZE;	// This assumes the entime is evenly divisible by the stepsize, which should always be true I think
 
 	//Allocating memory for the arrays used in the calculations, maybe should switch to using stack instead of heap memory...
 	y = (double**) malloc(sizeof(double*) * (nstep + 1));
 	for (i = 0; i < (nstep + 1); i++) {
 		y[i] = (double*) malloc(sizeof(double) * N);
 	}
-	xx = (double*) malloc(sizeof(double) * (nstep + 1));
 	
-	v = (double*) malloc(sizeof(double) * N);
-	dv = (double*) malloc(sizeof(double) * N);
-	vout = (double*) malloc(sizeof(double) * N);
-		
+
 	time = STARTTIME;
 	scan_(v);				//scanning in initial variables (state variables only) 
 	
@@ -415,14 +405,8 @@ int main() {
 		//~ free(y[i]);
 	//~ }
 		
-	//~ free(current);
 	dump_(vout);
 	free(spike.volts);
-	free(v);
-	free(dv);
-	free(vout);
-	//~ free(y);
-	free(xx);
 	
 	return 0;
 }
