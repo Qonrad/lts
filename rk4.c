@@ -49,11 +49,13 @@
 #define HIGHPROP_TAU 20
 #define STARTTIME 0
 #define ENDTIME 4700
-#define STEPSIZE 0.05
+#define STEPSIZE 0.02
 #define DELAY 10.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
-#define THRESHOLD 10.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
+#define THRESHOLD -20.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define SAMPLESIZE 30 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 10			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
+#define POPULATION 20		//number of neurons in the whole population
+#define MYCLUSTER 10		//number of neurons in the simulated neuron's population
 
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
@@ -97,6 +99,13 @@ int deriv_(double *xp, double *Y, double *F) {
 }
 */
 
+typedef struct Templates {
+	int steps;
+	double *volts;
+	double *init;
+	double ibuf[(int)(DELAY / STEPSIZE)];
+} Template;
+
 // Conrad code to print an array for debugging
 void printdarr(double *a, int numelems) {
 	int i;
@@ -124,7 +133,7 @@ derivs(double time, double *y, double *dydx, double *oldv) {
 	}
 	
 	if (USE_LOWPROPOFOL) {
-		gsyn = (time < PROPOFOL_START || time > PROPOFOL_END) ? G_SYN : LOWPROP_GSYN;
+		gsyn = (time < PROPOFOL_START || time > PROPOFOL_END) ? (G_SYN  * (MYCLUSTER - 1)): (LOWPROP_GSYN * (MYCLUSTER - 1));
 		tau = (time < PROPOFOL_START || time > PROPOFOL_END) ? TAUSYN : LOWPROP_TAU; 
 	}
 	else if (USE_HIGHPROPOFOL) {
@@ -132,7 +141,7 @@ derivs(double time, double *y, double *dydx, double *oldv) {
 		tau = (time < PROPOFOL_START || time > PROPOFOL_END) ? TAUSYN : HIGHPROP_TAU; 
 	}
 	else {	
-		gsyn = G_SYN;
+		gsyn = (G_SYN * (MYCLUSTER - 1));
 		tau = TAUSYN;
 	}
 	
@@ -252,12 +261,15 @@ double calculateSD(double data[], int ndatas) {
     return sqrt(standardDeviation / ndatas);
 }
 
+
 // This function is inefficient and should be optimized.
-int snapshot(double** y, double *xx, int nstep, int var, double timestart, double timestop, double *snap) {
+void snapshot(double** y, double *xx, int nstep, int var, double timestart, double timestop, Template *temp) {
+	temp->steps = (int)((timestop - timestart) / STEPSIZE);
+	temp->volts = (double*) malloc(sizeof(double) * temp->steps);
 	int i, place = 0;
 	for (i = 0; i < nstep + 1; ++i) {
 		if (timestart < xx[i] && xx[i] < timestop) {
-			snap[place] = y[i][var];
+			temp->volts[place] = y[i][var];
 			place++;
 		}
 	}
@@ -291,7 +303,10 @@ int main() {
 	//Variables for storing spike snapshot
 	double fthresh = -1.0;					//time at which voltage crosses threshold on the way up
 	double sndthresh = -1.0;				//time at which voltage crosses threshold on the way down
-	int snapshotlen;						//length of snapshot array
+	Template spike;
+	//~ int vsnapshotlen;						//length of voltage snapshot array
+	//~ double quickshot[N];					//saves the state of state variables at the beginning of the snapshot
+	//~ double bufshot[dsteps];					//saves state of the buffer at the beginning of the snapshot
 	
 	
 	nstep = (ENDTIME - STARTTIME) / STEPSIZE;	// This assumes the entime is evenly divisible by the stepsize, which should always be true I think
@@ -341,6 +356,9 @@ int main() {
 		if (spikecount > OFFSET) {	//finding time of threshold crossings for snapshot
 			if (fthresh == -1.0 && vout[0] >= -50.0 && v[0] < -50.0) {
 				fthresh = time;
+				for (i = 0; i < dsteps; ++i) {
+					spike.ibuf[i] = buf[i];
+				}
 			}
 			else if (fthresh != -1.0 && sndthresh == -1.0 && vout[0] <= -50.0 && v[0] > -50.0) {
 				sndthresh = time;
@@ -381,11 +399,12 @@ int main() {
 	}
 	printf("fthresh = %f and sndthresh = %f\n", fthresh, sndthresh);
 	
-	snapshotlen = (int)((sndthresh - fthresh) / STEPSIZE);
-	double vsnapshot[snapshotlen];						//voltage snapshot from -50 to -50
-	snapshot(y, xx, nstep, V, fthresh, sndthresh, vsnapshot);
-	printf("The snapshot contains %d steps.\n", snapshotlen);
-	printdarr(vsnapshot, snapshotlen);
+	snapshot(y, xx, nstep, V, fthresh, sndthresh, &spike);
+	//~ vsnapshotlen = (int)((sndthresh - fthresh) / STEPSIZE);
+	//~ double vsnapshot[vsnapshotlen];						//voltage snapshot from -50 to -50
+	//~ snapshot(y, xx, nstep, V, fthresh, sndthresh, vsnapshot, quickshot);
+	//~ printf("The snapshot contains %d steps.\n", vsnapshotlen);
+	//~ printdarr(vsnapshot, vsnapshotlen);
 	
 	makedata(y, xx, nstep, V, "v.data");
 	makedata(y, xx, nstep, M, "m.data");
@@ -398,6 +417,7 @@ int main() {
 		
 	//~ free(current);
 	dump_(vout);
+	free(spike.volts);
 	free(v);
 	free(dv);
 	free(vout);
