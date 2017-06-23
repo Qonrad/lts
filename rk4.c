@@ -51,15 +51,20 @@
 #define ENDTIME 4700
 #define STEPSIZE 0.02
 #define DELAY 10.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
-#define THRESHOLD -20.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
+#define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 30 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 10			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population
 #define MYCLUSTER 10		//number of neurons in the simulated neuron's population
+#define DO_PRC 1			//toggle for prc
+#define INTERVAL 1			//number of intervals prc analysis will be done on
+#define True 1
+#define False 0
 
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
+int prcmode;
 /*
 int deriv_(double *xp, double *Y, double *F) {
 	extern double current[C*NN]; 
@@ -105,6 +110,7 @@ typedef struct Templates {
 	double *volts;
 	double init[N];
 	double ibuf[(int)(DELAY / STEPSIZE)];
+	int bufpos;
 } Template;
 
 // Conrad code to print an array for debugging
@@ -125,7 +131,7 @@ derivs(double time, double *y, double *dydx, double *oldv) {
 	double iapp, gsyn, tau;
 	extern double current[];
 	
-	if (USE_I_APP) {
+	if (USE_I_APP && !(prcmode)) {
 		iapp = (time < I_APP_START || time > I_APP_END) ? I_APP : I_APP_STEP;
 		
 	}
@@ -134,15 +140,15 @@ derivs(double time, double *y, double *dydx, double *oldv) {
 	}
 	
 	if (USE_LOWPROPOFOL) {
-		gsyn = (time < PROPOFOL_START || time > PROPOFOL_END) ? (G_SYN  * (MYCLUSTER - 1)): (LOWPROP_GSYN * (MYCLUSTER - 1));
-		tau = (time < PROPOFOL_START || time > PROPOFOL_END) ? TAUSYN : LOWPROP_TAU; 
+		gsyn = (time < PROPOFOL_START || time > PROPOFOL_END || prcmode) ? (G_SYN): (LOWPROP_GSYN);
+		tau = (time < PROPOFOL_START || time > PROPOFOL_END || prcmode) ? TAUSYN : LOWPROP_TAU; 
 	}
 	else if (USE_HIGHPROPOFOL) {
-		gsyn = (time < PROPOFOL_START || time > PROPOFOL_END) ? G_SYN : HIGHPROP_GSYN;
-		tau = (time < PROPOFOL_START || time > PROPOFOL_END) ? TAUSYN : HIGHPROP_TAU; 
+		gsyn = (time < PROPOFOL_START || time > PROPOFOL_END || prcmode) ? G_SYN : HIGHPROP_GSYN;
+		tau = (time < PROPOFOL_START || time > PROPOFOL_END || prcmode) ? TAUSYN : HIGHPROP_TAU; 
 	}
 	else {	
-		gsyn = (G_SYN * (MYCLUSTER - 1));
+		gsyn = (G_SYN);
 		tau = TAUSYN;
 	}
 	
@@ -152,7 +158,7 @@ derivs(double time, double *y, double *dydx, double *oldv) {
 	current[I_K] =  G_K * pow(y[NV], 4.0) * (y[V] - E_K);
 	current[I_M] =  G_M * y[MN] * (y[V] - E_K);
 	current[I_L] =  G_L * (y[V] - E_L);
-	current[I_S] =  gsyn * (y[S] + y[P])* (y[V] - E_SYN);
+	current[I_S] =  gsyn * ((y[S] * (MYCLUSTER - 1))+ y[P] * (POPULATION - MYCLUSTER)) * (y[V] - E_SYN);
 	
 	dydx[V] = (iapp - current[I_NA] - current[I_K] - current[I_M] - current[I_L] - current[I_S]) / CM;
 	dydx[M] =  (( fabs(((y[V] + 54)) / 4) < 10e-6) ? (0.32 * 4.0) : ( f(y[V], 0.32, -54, 4.0) )) * (1.0 - y[M]) - ((fabs(((y[V] + 27)) / 5) < 10e-6) ? (-0.28 * -5) : ( f(y[V], -0.28, -27, -5.0) )) * y[M];
@@ -261,6 +267,13 @@ double calculateSD(double data[], int ndatas) {
     return sqrt(standardDeviation / ndatas);
 }
 
+void copyab(double *a, double *b, int len) {									//function to copy array of doubles
+	int i;
+	for (i = 0; i < len; ++i) {
+		b[i] = a[i];
+	}
+	return;
+}
 
 // This function is inefficient and should be optimized.
 void snapshot(double** y, double *xx, int nstep, int var, double timestart, double timestop, Template *temp) {
@@ -276,7 +289,7 @@ void snapshot(double** y, double *xx, int nstep, int var, double timestart, doub
 	return;
 }
 
-void printemp(Template *temp) {
+void printemp(Template *temp) {//will cause an error if the template doesn't have everything in it
 	printf("This template contains %d steps.\n", temp->steps);
 	printf("Array of Voltages\n");
 	printdarr(temp->volts, temp->steps);
@@ -286,9 +299,10 @@ void printemp(Template *temp) {
 	printdarr(temp->ibuf, (int)(DELAY / STEPSIZE));
 	
 }
+
 int main() {
 	//Variables to do with simulation
-	int nstep = (ENDTIME - STARTTIME) / STEPSIZE;	// This assumes the entime is evenly divisible by the stepsize, which should always be true I think
+	int nstep = (ENDTIME - STARTTIME) / STEPSIZE;	// This assumes the endtime-starttime is evenly divisible by the stepsize, which should always be true I think
 	int i, k;
 	double time;
 	double v[N], vout[N], dv[N];					//v = variables (state and current), vout = output variables, dv = derivatives (fstate)
@@ -362,6 +376,7 @@ int main() {
 				for (i = 0; i < dsteps; ++i) {
 					spike.ibuf[i] = buf[i];			//puts initial buffer into spike template
 				}
+				spike.bufpos = bufpos;
 			}
 			else if (fthresh != -1.0 && sndthresh == -1.0 && vout[0] <= STHRESHOLD && v[0] > STHRESHOLD) {
 				sndthresh = time;
@@ -402,18 +417,101 @@ int main() {
 	printf("fthresh = %f and sndthresh = %f\n", fthresh, sndthresh);
 	
 	snapshot(y, xx, nstep, V, fthresh, sndthresh, &spike);
-	printemp(&spike);
+	//~ printemp(&spike);
 	
 	makedata(y, xx, nstep, V, "v.data");
 	makedata(y, xx, nstep, M, "m.data");
 	makedata(y, xx, nstep, H, "h.data");
 	makedata(y, xx, nstep, NV, "n.data");
-	
-	//~ for (i = 0; i < (nstep + 1); i++) {		//commented out b/c it's causing errors and I don't know why :(
-		//~ free(y[i]);
-	//~ }
-		
 	dump_(vout);
+	
+	if (DO_PRC) {
+		extern int prcmode;
+		prcmode = True;
+		int prcsteps = psteps * 5;
+		
+		for (i = 0; i < N; ++i) {
+			dv[i] = 0.0;
+			v[i] = 0.0;
+			vout[i] = 0.0;
+			current[i] = 0.0;
+		}
+		
+		printf("Attempting to use template\n");
+		printemp(&spike);
+		copyab(spike.init, v, N);
+		printdarr(v, N);
+		copyab(spike.ibuf, buf, (int)(DELAY / STEPSIZE));
+		time = 0;
+		bufpos = spike.bufpos;
+		del = &buf[bufpos]; //moves the pointer one step ahead in the buffer
+		
+		derivs(time, v, dv, del);
+	
+		rk4(v, dv, N, time, STEPSIZE, vout, del);
+		
+		xx[0] = time;
+		for (i = 0; i < N; i++) {
+			v[i] = vout[i]; 
+			y[0][i] = v[i];
+		}
+		
+		bufpos = spike.bufpos;
+		for (k = 0; k < prcsteps; k++) {
+			del = &buf[bufpos]; //moves the pointer one step ahead in the buffer
+			derivs(time, v, dv, del);
+			rk4(v, dv, N, time, STEPSIZE, vout, del);
+			*del = vout[0];
+		
+			//~ if (vout[0] >= THRESHOLD && v[0] < THRESHOLD) {
+				//~ if (spikecount < (SAMPLESIZE + OFFSET)) {
+					//~ sptimes[spikecount] = time;
+				//~ }
+				//~ ++spikecount;			//incremented at the end so it can be used as position in sptimes			
+			//~ }
+		
+			//~ if (spikecount > OFFSET) {	//finding time of threshold crossings for snapshot
+				//~ if (fthresh == -1.0 && vout[0] >= STHRESHOLD && v[0] < STHRESHOLD) {
+					//~ fthresh = time;
+					//~ for (i = 0; i < N; ++i) {			//puts initial state variables into spike template
+						//~ spike.init[i] = vout[i];
+					//~ }
+					//~ for (i = 0; i < dsteps; ++i) {
+						//~ spike.ibuf[i] = buf[i];			//puts initial buffer into spike template
+					//~ }
+				//~ }
+				//~ else if (fthresh != -1.0 && sndthresh == -1.0 && vout[0] <= STHRESHOLD && v[0] > STHRESHOLD) {
+					//~ sndthresh = time;
+				//~ }
+			//~ }
+				
+			time += STEPSIZE;
+			xx[k + 1] = time;
+		
+			if (bufpos < dsteps - 1) {	//increments bufpos within the buffer each step
+				bufpos++;
+			}
+			else {
+				bufpos = 0;
+			}
+		
+			for (i = 0; i < N; i++) {
+				v[i] = vout[i];
+				y[k + 1][i] = v[i];
+			}
+		}
+		
+		makedata(y, xx, prcsteps, V, "prcv.data");	
+		makedata(y, xx, prcsteps, M, "prcm.data");
+		makedata(y, xx, prcsteps, H, "prch.data");
+		makedata(y, xx, prcsteps, NV, "prcn.data");
+	}
+	
+	for (i = 0; i < (nstep + 1); i++) {		
+		free(y[i]);
+	}
+		
+	
 	free(spike.volts);
 	
 	return 0;
