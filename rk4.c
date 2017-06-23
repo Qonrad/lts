@@ -50,7 +50,7 @@
 #define STARTTIME 0
 #define ENDTIME 4700
 #define STEPSIZE 0.02
-#define DELAY 10.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
+#define DELAY 3.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 30 		//number of spikes that are averaged together to give unperturbed period
@@ -58,6 +58,8 @@
 #define POPULATION 20		//number of neurons in the whole population
 #define MYCLUSTER 10		//number of neurons in the simulated neuron's population
 #define DO_PRC 1			//toggle for prc
+#define DO_TRACE 1			//toggles doing trace for a single 
+#define TPHASE 0.5
 #define INTERVAL 1			//number of intervals prc analysis will be done on
 #define True 1
 #define False 0
@@ -186,7 +188,7 @@ derivs(double time, double *y, double *dydx, double *oldv) {
 		dydx[P] = 2 * (1 + tanh(*pert / 4.0)) * (1 - y[P]) - y[P] / tau;	//should probably be Ps instead of Ss
 	}
 	else {
-		dydx[P] = 2 * (1 + tanh((-50.0) / 4.0)) * (1 - y[P]) - y[P] / tau;
+		dydx[P] = 2 * (1 + tanh((THRESHOLD) / 4.0)) * (1 - y[P]) - y[P] / tau;
 	}
 	//2*(1+tanh(y[V1 + N*j]/4.0))*(1-y[S1 + N*j])-y[S1 + N*j]/TAUSYN;  
 }
@@ -440,11 +442,14 @@ int main() {
 	makedata(y, xx, nstep, NV, "n.data");
 	dump_(vout);
 	
-	if (DO_PRC) {
+	extern int prcmode;
+	double phase;
+	if (DO_TRACE) {
 		extern int prcmode;
 		double phase;
 		prcmode = True;
 		int prcsteps = psteps * 5;
+		
 		for (i = 0; i < N; ++i) {
 			dv[i] = 0.0;
 			v[i] = 0.0;
@@ -474,40 +479,18 @@ int main() {
 			v[i] = vout[i]; 
 			y[0][i] = v[i];
 		}
-		int targstep = (prcsteps / 5) * 1.5;
+		
+		double targphase = 0.99;
+		
+		int targstep = (prcsteps / 5) * (1 + targphase);
 		
 		bufpos = spike.bufpos;
 		for (k = 0; k < prcsteps; k++) {
-			
 			
 			del = &buf[bufpos]; //moves the pointer one step ahead in the buffer
 			derivs(time, v, dv, del);
 			rk4(v, dv, N, time, STEPSIZE, vout, del);
 			*del = vout[0];
-			
-			
-			
-			//~ if (vout[0] >= THRESHOLD && v[0] < THRESHOLD) {
-				//~ if (spikecount < (SAMPLESIZE + OFFSET)) {
-					//~ sptimes[spikecount] = time;
-				//~ }
-				//~ ++spikecount;			//incremented at the end so it can be used as position in sptimes			
-			//~ }
-		
-			//~ if (spikecount > OFFSET) {	//finding time of threshold crossings for snapshot
-				//~ if (fthresh == -1.0 && vout[0] >= STHRESHOLD && v[0] < STHRESHOLD) {
-					//~ fthresh = time;
-					//~ for (i = 0; i < N; ++i) {			//puts initial state variables into spike template
-						//~ spike.init[i] = vout[i];
-					//~ }
-					//~ for (i = 0; i < dsteps; ++i) {
-						//~ spike.ibuf[i] = buf[i];			//puts initial buffer into spike template
-					//~ }
-				//~ }
-				//~ else if (fthresh != -1.0 && sndthresh == -1.0 && vout[0] <= STHRESHOLD && v[0] > STHRESHOLD) {
-					//~ sndthresh = time;
-				//~ }
-			//~ }
 				
 			time += STEPSIZE;
 			xx[k + 1] = time;
@@ -539,10 +522,10 @@ int main() {
 			
 		}
 		
-		makedata(y, xx, prcsteps, V, "prcv.data");	
-		makedata(y, xx, prcsteps, M, "prcm.data");
-		makedata(y, xx, prcsteps, H, "prch.data");
-		makedata(y, xx, prcsteps, NV, "prcn.data");
+		makedata(y, xx, prcsteps, V, "tracev.data");	
+		makedata(y, xx, prcsteps, M, "tracem.data");
+		makedata(y, xx, prcsteps, H, "traceh.data");
+		makedata(y, xx, prcsteps, NV, "tracen.data");
 	}
 	
 	for (i = 0; i < (nstep + 1); i++) {		
