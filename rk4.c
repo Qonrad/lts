@@ -64,7 +64,9 @@
 
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
-int prcmode;
+static int prcmode;
+static int pertmode;
+double *pert;
 /*
 int deriv_(double *xp, double *Y, double *F) {
 	extern double current[C*NN]; 
@@ -129,7 +131,12 @@ inline double f(double v, double a, double th, double q) {
 
 derivs(double time, double *y, double *dydx, double *oldv) { 
 	double iapp, gsyn, tau;
-	extern double current[];
+	extern double *pert;
+	
+	if (pertmode) {
+		printf("%f %f\n", time, *pert);
+		//~ printf("pert points to %p", pert);
+	}
 	
 	if (USE_I_APP && !(prcmode)) {
 		iapp = (time < I_APP_START || time > I_APP_END) ? I_APP : I_APP_STEP;
@@ -158,7 +165,7 @@ derivs(double time, double *y, double *dydx, double *oldv) {
 	current[I_K] =  G_K * pow(y[NV], 4.0) * (y[V] - E_K);
 	current[I_M] =  G_M * y[MN] * (y[V] - E_K);
 	current[I_L] =  G_L * (y[V] - E_L);
-	current[I_S] =  gsyn * ((y[S] * (MYCLUSTER - 1))+ y[P] * (POPULATION - MYCLUSTER)) * (y[V] - E_SYN);
+	current[I_S] =  gsyn * ((y[S] * (MYCLUSTER - 1))+ (y[P] * (POPULATION - MYCLUSTER))) * (y[V] - E_SYN);
 	
 	dydx[V] = (iapp - current[I_NA] - current[I_K] - current[I_M] - current[I_L] - current[I_S]) / CM;
 	dydx[M] =  (( fabs(((y[V] + 54)) / 4) < 10e-6) ? (0.32 * 4.0) : ( f(y[V], 0.32, -54, 4.0) )) * (1.0 - y[M]) - ((fabs(((y[V] + 27)) / 5) < 10e-6) ? (-0.28 * -5) : ( f(y[V], -0.28, -27, -5.0) )) * y[M];
@@ -175,7 +182,12 @@ derivs(double time, double *y, double *dydx, double *oldv) {
 	else {
 		dydx[S] = 2 * (1 + tanh(y[V] / 4.0)) * (1 - y[S]) - y[S] / tau;
 	}
-	dydx[P] = 0.0;
+	if (pertmode) {
+		dydx[P] = 2 * (1 + tanh(*pert / 4.0)) * (1 - y[P]) - y[P] / tau;	//should probably be Ps instead of Ss
+	}
+	else {
+		dydx[P] = 2 * (1 + tanh((-50.0) / 4.0)) * (1 - y[P]) - y[P] / tau;
+	}
 	//2*(1+tanh(y[V1 + N*j]/4.0))*(1-y[S1 + N*j])-y[S1 + N*j]/TAUSYN;  
 }
 
@@ -335,7 +347,10 @@ int main() {
 		y[i] = (double*) malloc(sizeof(double) * N);
 	}
 	
-
+	//Variables to do with conducting prc
+	extern int pertmode;
+	extern double *pert;
+	
 	time = STARTTIME;
 	scan_(v);				//scanning in initial variables (state variables only) 
 	
@@ -427,9 +442,9 @@ int main() {
 	
 	if (DO_PRC) {
 		extern int prcmode;
+		double phase;
 		prcmode = True;
 		int prcsteps = psteps * 5;
-		
 		for (i = 0; i < N; ++i) {
 			dv[i] = 0.0;
 			v[i] = 0.0;
@@ -446,7 +461,11 @@ int main() {
 		bufpos = spike.bufpos;
 		del = &buf[bufpos]; //moves the pointer one step ahead in the buffer
 		
-		derivs(time, v, dv, del);
+		pert = spike.volts;
+		int pertpos = 0;
+		//~ printf("pert points to %p which holds %f\n", pert, *pert);
+		
+		derivs(time, v, dv, del);	//does running this one effect the phase/ perturbation? I don't think so but I'm not sure.
 	
 		rk4(v, dv, N, time, STEPSIZE, vout, del);
 		
@@ -455,14 +474,19 @@ int main() {
 			v[i] = vout[i]; 
 			y[0][i] = v[i];
 		}
+		int targstep = (prcsteps / 5) * 1.5;
 		
 		bufpos = spike.bufpos;
 		for (k = 0; k < prcsteps; k++) {
+			
+			
 			del = &buf[bufpos]; //moves the pointer one step ahead in the buffer
 			derivs(time, v, dv, del);
 			rk4(v, dv, N, time, STEPSIZE, vout, del);
 			*del = vout[0];
-		
+			
+			
+			
 			//~ if (vout[0] >= THRESHOLD && v[0] < THRESHOLD) {
 				//~ if (spikecount < (SAMPLESIZE + OFFSET)) {
 					//~ sptimes[spikecount] = time;
@@ -494,11 +518,25 @@ int main() {
 			else {
 				bufpos = 0;
 			}
+			
+			if (k == targstep) {
+				pertmode = True;
+			}
+			if (pertmode) {
+				if (pertpos < spike.steps - 1) {
+					pertpos++;
+					pert = &spike.volts[pertpos];
+				}
+				else {
+					pertmode = False;
+				}
+			}
 		
 			for (i = 0; i < N; i++) {
 				v[i] = vout[i];
 				y[k + 1][i] = v[i];
 			}
+			
 		}
 		
 		makedata(y, xx, prcsteps, V, "prcv.data");	
