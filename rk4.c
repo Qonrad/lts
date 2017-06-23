@@ -52,6 +52,7 @@
 #define STEPSIZE 0.02
 #define DELAY 10.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -20.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
+#define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 30 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 10			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population
@@ -102,7 +103,7 @@ int deriv_(double *xp, double *Y, double *F) {
 typedef struct Templates {
 	int steps;
 	double *volts;
-	double *init;
+	double init[N];
 	double ibuf[(int)(DELAY / STEPSIZE)];
 } Template;
 
@@ -145,8 +146,7 @@ derivs(double time, double *y, double *dydx, double *oldv) {
 		tau = TAUSYN;
 	}
 	
-	//First cell. It is self-connected and the one that is measured for the PRC.
-	//printf("%f\n", iapp);
+	//cell is self-connected and the one that is measured for the PRC.
 	// (((y[V] - (-54)) / 4) < 10e-6) ? (0.32 * 4.0) :
 	current[I_NA] = G_NA * y[H] * pow(y[M], 3.0) * (y[V] - E_NA);
 	current[I_K] =  G_K * pow(y[NV], 4.0) * (y[V] - E_K);
@@ -276,6 +276,16 @@ void snapshot(double** y, double *xx, int nstep, int var, double timestart, doub
 	return;
 }
 
+void printemp(Template *temp) {
+	printf("This template contains %d steps.\n", temp->steps);
+	printf("Array of Voltages\n");
+	printdarr(temp->volts, temp->steps);
+	printf("Initial array of state variables\n");
+	printdarr(temp->init, N);
+	printf("Initial array of buffer\n");
+	printdarr(temp->ibuf, (int)(DELAY / STEPSIZE));
+	
+}
 int main() {
 	//Variables to do with simulation
 	int nstep = (ENDTIME - STARTTIME) / STEPSIZE;	// This assumes the entime is evenly divisible by the stepsize, which should always be true I think
@@ -305,7 +315,7 @@ int main() {
 	double sndthresh = -1.0;				//time at which voltage crosses threshold on the way down
 	Template spike;
 
-	//Allocating memory for the arrays used in the calculations, maybe should switch to using stack instead of heap memory...
+	//Allocating memory for the storage array, should switch to stack memory if possible
 	y = (double**) malloc(sizeof(double*) * (nstep + 1));
 	for (i = 0; i < (nstep + 1); i++) {
 		y[i] = (double*) malloc(sizeof(double) * N);
@@ -344,13 +354,16 @@ int main() {
 		}
 		
 		if (spikecount > OFFSET) {	//finding time of threshold crossings for snapshot
-			if (fthresh == -1.0 && vout[0] >= -50.0 && v[0] < -50.0) {
+			if (fthresh == -1.0 && vout[0] >= STHRESHOLD && v[0] < STHRESHOLD) {
 				fthresh = time;
+				for (i = 0; i < N; ++i) {			//puts initial state variables into spike template
+					spike.init[i] = vout[i];
+				}
 				for (i = 0; i < dsteps; ++i) {
-					spike.ibuf[i] = buf[i];
+					spike.ibuf[i] = buf[i];			//puts initial buffer into spike template
 				}
 			}
-			else if (fthresh != -1.0 && sndthresh == -1.0 && vout[0] <= -50.0 && v[0] > -50.0) {
+			else if (fthresh != -1.0 && sndthresh == -1.0 && vout[0] <= STHRESHOLD && v[0] > STHRESHOLD) {
 				sndthresh = time;
 			}
 		}
@@ -380,7 +393,6 @@ int main() {
 		normalperiod = sumdiffs / SAMPLESIZE;
 		psteps = normalperiod / STEPSIZE;
 		periodsd = calculateSD(spdiffs, SAMPLESIZE - 1);
-		//printdarr(spdiffs, SAMPLESIZE - 1);
 		printf("The average unperturbed period is %f, which is approximately %d steps.\n", normalperiod, psteps);
 		printf("The standard deviation is %f.\n", periodsd);
 	}
@@ -390,11 +402,7 @@ int main() {
 	printf("fthresh = %f and sndthresh = %f\n", fthresh, sndthresh);
 	
 	snapshot(y, xx, nstep, V, fthresh, sndthresh, &spike);
-	//~ vsnapshotlen = (int)((sndthresh - fthresh) / STEPSIZE);
-	//~ double vsnapshot[vsnapshotlen];						//voltage snapshot from -50 to -50
-	//~ snapshot(y, xx, nstep, V, fthresh, sndthresh, vsnapshot, quickshot);
-	//~ printf("The snapshot contains %d steps.\n", vsnapshotlen);
-	//~ printdarr(vsnapshot, vsnapshotlen);
+	printemp(&spike);
 	
 	makedata(y, xx, nstep, V, "v.data");
 	makedata(y, xx, nstep, M, "m.data");
