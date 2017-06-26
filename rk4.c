@@ -25,7 +25,7 @@
 #define P 6
 #define CM 1.00 /*uF/cm2*/
 #define I_APP 1.81 /*uA/cm2*/ 
-#define I_APP_STEP 3.3
+#define I_APP_STEP -3.3
 #define E_NA  50.0
 #define E_K  -100.0
 #define E_L  -67.0
@@ -50,7 +50,7 @@
 #define STARTTIME 0
 #define ENDTIME 4700
 #define STEPSIZE 0.02
-#define DELAY 3.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
+#define DELAY 0.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 30 		//number of spikes that are averaged together to give unperturbed period
@@ -59,10 +59,11 @@
 #define MYCLUSTER 10		//number of neurons in the simulated neuron's population
 #define DO_PRC 1			//toggle for prc
 #define DO_TRACE 1			//toggles doing trace for a single 
-#define TPHASE 0.5
-#define INTERVAL 100			//number of intervals prc analysis will be done on
+#define TPHASE 0.01
+#define INTERVAL 200			//number of intervals prc analysis will be done on
 #define True 1
 #define False 0
+#define PRCSKIP 0
 
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
@@ -470,11 +471,10 @@ int main() {
 	int flag2;		//second period complete after perturbation
 	int flag3;		//third period complete after perturbation
 	
-	
 	if (DO_TRACE) {
 		phipair trace;
 		targphase = TPHASE;
-		targstep = (prcsteps / 5) * (1 + targphase);
+		targstep = (PRCSKIP) ? (psteps * (1 + targphase)) : (psteps * targphase);
 		trace.phase = targphase;
 		
 		for (i = 0; i < N; ++i) {
@@ -484,8 +484,8 @@ int main() {
 			current[i] = 0.0;
 		}
 		
-		//~ printf("Attempting to use template\n");
-		//~ printemp(&spike);
+		printf("Attempting to use template\n");
+		printemp(&spike);
 		copyab(spike.init, v, N);
 		//~ printdarr(v, N);
 		copyab(spike.ibuf, buf, (int)(DELAY / STEPSIZE));
@@ -525,6 +525,7 @@ int main() {
 			}
 			
 			if (k == targstep) {	//activates perturbation mode if on correct step, allows derivs() to start using the "perturbation synapse" (a [pre-recorded stimulus of the same identical neuron)
+				printf("%f\n", time);
 				pertmode = True;
 				flag = True;
 			}
@@ -539,10 +540,12 @@ int main() {
 			}
 			if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && !flag1) {
 				flag1 = True;
-				trace.fphi1 = (((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps);
-				//~ ((double)targstep - (double)psteps) / (k - psteps);
-				//~ printf("fphi1 %f\n", trace.fphi1);
+				trace.fphi1 = (PRCSKIP) ? ((((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps)) : ((double)(k) - (double)(psteps))/ (double)(psteps);
 			}
+			//~ if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 && !flag2) {
+				//~ flag2 = True;
+				//~ trace.fphi2 = (((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps);
+			//~ }
 			for (i = 0; i < N; i++) {
 				v[i] = vout[i];
 				y[k + 1][i] = v[i];
@@ -558,10 +561,12 @@ int main() {
 		int j;
 		phipair prc[INTERVAL + 1];
 		int prcpos = 0;
+		
+		double ptime;
 
 		for (j = 0; j < INTERVAL + 1; ++j) {
 			targphase = ((double)j) * (1.0 / INTERVAL);
-			targstep = (prcsteps / 5) * (1 + targphase);
+			targstep = (PRCSKIP) ? (psteps * (1 + targphase)) : (psteps * targphase);
 			
 			
 			flag = False;
@@ -617,6 +622,7 @@ int main() {
 				if (k == targstep) {
 					pertmode = True;
 					flag = True;
+					ptime = time;
 				}
 				if (pertmode) {
 					if (pertpos < spike.steps - 1) {
@@ -629,10 +635,10 @@ int main() {
 				}
 				if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && !flag1) {
 					flag1 = True;
-					prc[prcpos].fphi1 = (((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps);
+					prc[prcpos].fphi1 = (PRCSKIP) ? ((((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps)) : ((double)(k) - (double)(psteps))/ (double)(psteps);
 					prc[prcpos].phase = targphase;
 					//~ ((double)targstep - (double)psteps) / (k - psteps);
-					printf("%f %f\n", prc[prcpos].phase, prc[prcpos].fphi1);
+					printf("%f %d %f %f %f\n", ptime, targstep, prc[prcpos].phase, time, prc[prcpos].fphi1);
 					prcpos++;
 			}
 				for (i = 0; i < N; i++) {
