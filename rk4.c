@@ -321,12 +321,19 @@ void printemp(Template *temp) {//will cause an error if the template doesn't hav
 	
 }
 
-void printphi(phipair *p, int interval,  const char *filename) {	//makes a .data file with the prc
+void printphi(phipair *p, int interval, int f, const char *filename) {	//makes a .data file with the prc
 	int i;
 	FILE *fopen(),*fp;
 	fp = fopen(filename, "w");
-	for (i = 0; i < interval + 1; i++) {
-		fprintf(fp, "%f %f\n", p[i].phase, p[i].fphi1);
+	if (f == 1) {
+		for (i = 0; i < interval + 1; i++) {
+			fprintf(fp, "%f %f\n", p[i].phase, p[i].fphi1);
+		}
+	}
+	else if (f == 2) {
+		for (i = 0; i < interval + 1; i++) {
+			fprintf(fp, "%f %f\n", p[i].phase, p[i].fphi2);
+		}
 	}
 	fclose(fp);
 }
@@ -349,7 +356,7 @@ int main() {
 	//Variables to do with initial PRC measurements
 	double normalperiod;					//unperturbed period of the oscillation, difference between snd_time and fst_time;
 	int psteps;								//number of steps in the unperturbed period
-	double sptimes[SAMPLESIZE + OFFSET];	//array of times of spiking, differences will be averaged to find unperturbed period of oscillation
+	double sptimes[SAMPLESIZE + OFFSET];	//array of times of sp(PRCSKIP) ? ((((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps)) : ((double)(k) - (double)(psteps))/ (double)(psteps);iking, differences will be averaged to find unperturbed period of oscillation
 	int spikecount = 0;						//holds the location the simulation has reached in sptimes
 	double spdiffs[SAMPLESIZE - 1];			//array of differences in the times of spiking, averaged to find the normalperiod
 	double sumdiffs = 0;					//holds the sum of differences in times of sptimes, used for averaging
@@ -469,7 +476,7 @@ int main() {
 	int flag;		//perturbation happened
 	int flag1;		//first period complete after perturbation
 	int flag2;		//second period complete after perturbation
-	int flag3;		//third period complete after perturbation
+	int flag3;		//third period complete after perturbation, currently unused
 	
 	if (DO_TRACE) {
 		phipair trace;
@@ -539,13 +546,14 @@ int main() {
 				}
 			}
 			if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && !flag1) {
-				flag1 = True;
+				flag1 = k;
 				trace.fphi1 = (PRCSKIP) ? ((((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps)) : ((double)(k) - (double)(psteps))/ (double)(psteps);
 			}
-			//~ if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 && !flag2) {
-				//~ flag2 = True;
-				//~ trace.fphi2 = (((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps);
-			//~ }
+			else if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 != 0 && !flag2) {
+				flag2 = k;
+				trace.fphi2 = ((double)(k) - (double)(flag1))/ (double)(psteps);
+				//~ printf("k %d ptime %f targstep %d prc[prcpos].phase %f time %f prc[prcpos].fphi1 %f flag1 %d flag2 %d prc[prcpos].fphi2 %f\n", k, ptime, targstep, prc[prcpos].phase, time, prc[prcpos].fphi1, flag1, flag2, prc[prcpos].fphi2);
+			}
 			for (i = 0; i < N; i++) {
 				v[i] = vout[i];
 				y[k + 1][i] = v[i];
@@ -571,6 +579,8 @@ int main() {
 			
 			flag = False;
 			flag1 = False;
+			flag2 = False;
+			//~ flag3 = False;
 			
 			for (i = 0; i < N; ++i) {
 				dv[i] = 0.0;
@@ -633,25 +643,28 @@ int main() {
 						pertmode = False;
 					}
 				}
-				if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && !flag1) {
-					flag1 = True;
+				if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 == 0) {
+					flag1 = k;
 					prc[prcpos].fphi1 = (PRCSKIP) ? ((((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps)) : ((double)(k) - (double)(psteps))/ (double)(psteps);
 					prc[prcpos].phase = targphase;
 					//~ ((double)targstep - (double)psteps) / (k - psteps);
-					printf("%f %d %f %f %f\n", ptime, targstep, prc[prcpos].phase, time, prc[prcpos].fphi1);
+					
+				}
+				else if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 != 0 && !flag2) {
+					flag2 = k;
+					prc[prcpos].fphi2 = ((double)(k) - (double)(flag1))/ (double)(psteps);
+					printf("k %d ptime %f targstep %d prc[prcpos].phase %f time %f prc[prcpos].fphi1 %f flag1 %d flag2 %d prc[prcpos].fphi2 %f\n", k, ptime, targstep, prc[prcpos].phase, time, prc[prcpos].fphi1, flag1, flag2, prc[prcpos].fphi2);
 					prcpos++;
-			}
+				}
 				for (i = 0; i < N; i++) {
 					v[i] = vout[i];
 					y[k + 1][i] = v[i];
 				}
 			}
 		}
-		printphi(prc, INTERVAL, "prc1.data");
+		printphi(prc, INTERVAL, 1, "prc1.data");
+		printphi(prc, INTERVAL, 2, "prc2.data");
 	}
-	
-	
-	
 	
 	for (i = 0; i < (nstep + 1); i++) {		
 		free(y[i]);
