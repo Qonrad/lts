@@ -37,29 +37,29 @@
 #define G_SYN  0.165		//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
 #define TAUSYN 10			//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
 #define USE_I_APP 1
-#define I_APP_START 1000
-#define I_APP_END 1001
+#define I_APP_START 500
+#define I_APP_END 501
 #define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
 #define USE_HIGHPROPOFOL 0
 #define PROPOFOL_START 300
-#define PROPOFOL_END 4000
+#define PROPOFOL_END 20000
 #define LOWPROP_GSYN 0.25
 #define LOWPROP_TAU 10
 #define HIGHPROP_GSYN 0.5
 #define HIGHPROP_TAU 20
 #define STARTTIME 0
-#define ENDTIME 4700
+#define ENDTIME 10000
 #define STEPSIZE 0.02
 #define DELAY 0.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
-#define SAMPLESIZE 30 		//number of spikes that are averaged together to give unperturbed period
+#define SAMPLESIZE 80 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 10			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population
 #define MYCLUSTER 10		//number of neurons in the simulated neuron's population
 #define DO_PRC 1			//toggle for prc
-#define DO_TRACE 1			//toggles doing trace for a single 
-#define TPHASE 0.01
+#define DO_TRACE 0			//toggles doing trace for a single 
+#define TPHASE 0
 #define INTERVAL 200			//number of intervals prc analysis will be done on
 #define True 1
 #define False 0
@@ -114,7 +114,7 @@ typedef struct Phipairs {
 	double phase;
 	double fphi1;
 	double fphi2;
-} phipair;
+} Phipair;
 
 typedef struct Templates {
 	int steps;
@@ -123,6 +123,14 @@ typedef struct Templates {
 	double ibuf[(int)(DELAY / STEPSIZE)];
 	int bufpos;
 } Template;
+
+typedef struct TCross {
+	int prestep;
+	int poststep;
+	double pretime;
+	double posttime;
+	double itime;
+} Cross;
 
 // Conrad code to print an array for debugging
 void printdarr(double *a, int numelems) {
@@ -310,6 +318,7 @@ void snapshot(double** y, double *xx, int nstep, int var, double timestart, doub
 	return;
 }
 
+//Prints all the information about a completed template
 void printemp(Template *temp) {//will cause an error if the template doesn't have everything in it
 	printf("This template contains %d steps.\n", temp->steps);
 	printf("Array of Voltages\n");
@@ -321,7 +330,7 @@ void printemp(Template *temp) {//will cause an error if the template doesn't hav
 	
 }
 
-void printphi(phipair *p, int interval, int f, const char *filename) {	//makes a .data file with the prc
+void printphi(Phipair *p, int interval, int f, const char *filename) {	//makes a .data file with the prc
 	int i;
 	FILE *fopen(),*fp;
 	fp = fopen(filename, "w");
@@ -340,7 +349,8 @@ void printphi(phipair *p, int interval, int f, const char *filename) {	//makes a
 
 int main() {
 	//Variables to do with simulation
-	int nstep = (ENDTIME - STARTTIME) / STEPSIZE;	// This assumes the endtime-starttime is evenly divisible by the stepsize, which should always be true I think
+	long int nstep = (ENDTIME - STARTTIME) / STEPSIZE;	// This assumes the endtime-starttime is evenly divisible by the stepsize, which should always be true I think
+	printf("The initial simulation will contain %d steps.\n", nstep);
 	int i, k;
 	double time;
 	double v[N], vout[N], dv[N];					//v = variables (state and current), vout = output variables, dv = derivatives (fstate)
@@ -367,6 +377,7 @@ int main() {
 	double sndthresh = -1.0;				//time at which voltage crosses threshold on the way down
 	Template spike;
 
+	
 	//Allocating memory for the storage array, should switch to stack memory if possible
 	y = (double**) malloc(sizeof(double*) * (nstep + 1));
 	for (i = 0; i < (nstep + 1); i++) {
@@ -376,6 +387,8 @@ int main() {
 	//Variables to do with conducting prc
 	extern int pertmode;
 	extern double *pert;
+	
+	
 	
 	time = STARTTIME;
 	scan_(v);				//scanning in initial variables (state variables only) 
@@ -440,7 +453,13 @@ int main() {
 		}
 	}
 	
-	//~ printf("This simulation counted %d spikes in all.\n", spikecount);
+	makedata(y, xx, nstep, V, "v.data");
+	makedata(y, xx, nstep, M, "m.data");
+	makedata(y, xx, nstep, H, "h.data");
+	makedata(y, xx, nstep, NV, "n.data");
+	dump_(vout);
+	
+	printf("This simulation counted %d spikes in all.\n", spikecount);
 	if (spikecount >= (SAMPLESIZE + OFFSET)) {
 		for (i = OFFSET; i < SAMPLESIZE + OFFSET - 1; ++i) {		//calculates differences between spike times to find each period
 			sumdiffs += sptimes[i + 1] - sptimes[i];
@@ -449,22 +468,19 @@ int main() {
 		normalperiod = sumdiffs / SAMPLESIZE;
 		psteps = normalperiod / STEPSIZE;
 		periodsd = calculateSD(spdiffs, SAMPLESIZE - 1);
-		//~ printf("The average unperturbed period is %f, which is approximately %d steps.\n", normalperiod, psteps);
-		//~ printf("The standard deviation is %f.\n", periodsd);
+		printf("The average unperturbed period is %f, which is approximately %d steps.\n", normalperiod, psteps);
+		printf("The standard deviation is %f.\n", periodsd);
 	}
 	else {
 		printf("There are not enough spikes to account for sample size and offset or something else has gone wrong.\n");
+		printf("Killing because it hasn't passed the test of spikecount >= (SAMPLESIZE + OFFSET).\n");
+		printf("v.data-n.data as well as end.data were still written, but no trace or prc processes occured.");
+		return 0;
 	}
-	//~ printf("fthresh = %f and sndthresh = %f\n", fthresh, sndthresh);
+	printf("fthresh = %f and sndthresh = %f\n", fthresh, sndthresh);
 	
 	snapshot(y, xx, nstep, V, fthresh, sndthresh, &spike);
-	//~ printemp(&spike);
-	
-	makedata(y, xx, nstep, V, "v.data");
-	makedata(y, xx, nstep, M, "m.data");
-	makedata(y, xx, nstep, H, "h.data");
-	makedata(y, xx, nstep, NV, "n.data");
-	dump_(vout);
+	printemp(&spike);
 	
 	extern int prcmode;
 	double phase;
@@ -476,10 +492,10 @@ int main() {
 	int flag;		//perturbation happened
 	int flag1;		//first period complete after perturbation
 	int flag2;		//second period complete after perturbation
-	int flag3;		//third period complete after perturbation, currently unused
+	//~ int flag3;		//third period complete after perturbation, currently unused
 	
 	if (DO_TRACE) {
-		phipair trace;
+		Phipair trace;
 		targphase = TPHASE;
 		targstep = (PRCSKIP) ? (psteps * (1 + targphase)) : (psteps * targphase);
 		trace.phase = targphase;
@@ -532,7 +548,7 @@ int main() {
 			}
 			
 			if (k == targstep) {	//activates perturbation mode if on correct step, allows derivs() to start using the "perturbation synapse" (a [pre-recorded stimulus of the same identical neuron)
-				printf("%f\n", time);
+				//~ printf("%f\n", time);
 				pertmode = True;
 				flag = True;
 			}
@@ -548,6 +564,8 @@ int main() {
 			if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && !flag1) {
 				flag1 = k;
 				trace.fphi1 = (PRCSKIP) ? ((((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps)) : ((double)(k) - (double)(psteps))/ (double)(psteps);
+				printf("The trace was done at phase %f. The step targeted was %d (time = %f), and the total number of steps in the unperturbed period was %d.\n", TPHASE, targstep, time, psteps);
+				printf("f(phi)1 is %f.\n", trace.fphi1);
 			}
 			else if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 != 0 && !flag2) {
 				flag2 = k;
@@ -560,6 +578,8 @@ int main() {
 			}
 		}
 		
+		
+		
 		makedata(y, xx, prcsteps, V, "tracev.data");	
 		makedata(y, xx, prcsteps, M, "tracem.data");
 		makedata(y, xx, prcsteps, H, "traceh.data");
@@ -567,7 +587,7 @@ int main() {
 	}
 	if (DO_PRC) {
 		int j;
-		phipair prc[INTERVAL + 1];
+		Phipair prc[INTERVAL + 1];
 		int prcpos = 0;
 		
 		double ptime;
