@@ -48,7 +48,7 @@
 #define HIGHPROP_GSYN 0.5
 #define HIGHPROP_TAU 20
 #define STARTTIME 0
-#define ENDTIME 10000
+#define ENDTIME 20000
 #define STEPSIZE 0.02
 #define DELAY 0.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
@@ -58,7 +58,7 @@
 #define POPULATION 20		//number of neurons in the whole population
 #define MYCLUSTER 10		//number of neurons in the simulated neuron's population
 #define DO_PRC 1			//toggle for prc
-#define DO_TRACE 0			//toggles doing trace for a single 
+#define DO_TRACE 1			//toggles doing trace for a single 
 #define TPHASE 0
 #define INTERVAL 200			//number of intervals prc analysis will be done on
 #define True 1
@@ -355,7 +355,7 @@ int main() {
 	int i, k;
 	double time;
 	double v[N], vout[N], dv[N];					//v = variables (state and current), vout = output variables, dv = derivatives (fstate)
-	double **y, xx[nstep + 1]; 						//results variables, y[1..N][1..NSTEP+1], xx[1..NSTEP+1]
+	double **y, *xx; 						//results variables, y[1..N][1..NSTEP+1], xx[1..NSTEP+1]
 	extern double current[];				//external variable declaration
 	
 	//Variables to do with delay
@@ -379,11 +379,20 @@ int main() {
 	Template spike;
 
 	
-	//Allocating memory for the storage array, should switch to stack memory if possible
+	//Allocating memory for the storage arrays, checking if I can, so that I don't run out of memory
 	y = (double**) malloc(sizeof(double*) * (nstep + 1));
 	for (i = 0; i < (nstep + 1); i++) {
 		y[i] = (double*) malloc(sizeof(double) * N);
+		if (y[i] == NULL) {
+			fprintf(stderr, "Ran out of memory for storage array at y[%d]", i);
+			return 0;
+		}
 	}
+	xx = (double*) malloc(sizeof(double) * (nstep + 1));
+	if (xx == NULL) {
+		fprintf(stderr, "Ran out of memory for storage array xx]");
+		return 0;
+	} 
 	
 	//Variables to do with conducting prc
 	extern int pertmode;
