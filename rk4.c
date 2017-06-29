@@ -57,13 +57,15 @@
 #define OFFSET 10			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population
 #define MYCLUSTER 10		//number of neurons in the simulated neuron's population
-#define DO_PRC 1			//toggle for prc
+#define DO_PRC 0			//toggle for prc
 #define DO_TRACE 1			//toggles doing trace for a single 
-#define TPHASE 0
+#define TPHASE 0.995
 #define INTERVAL 200			//number of intervals prc analysis will be done on
 #define True 1
 #define False 0
 #define PRCSKIP 0
+#define INTERPOLATE 1
+#define UNPERT 1
 
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
@@ -125,12 +127,13 @@ typedef struct Templates {
 } Template;
 
 typedef struct TCross {
-	int prestep;
 	int poststep;
-	double pretime;
-	double posttime;
 	double itime;
 } Cross;
+
+//~ void interpolate(Cross* c, prev, postv) {
+	//~ 
+//~ }
 
 // Conrad code to print an array for debugging
 void printdarr(double *a, int numelems) {
@@ -426,7 +429,13 @@ int main() {
 		
 		if (vout[0] >= THRESHOLD && v[0] < THRESHOLD) {
 			if (spikecount < (SAMPLESIZE + OFFSET)) {
-				sptimes[spikecount] = time;
+				if (INTERPOLATE) {
+					sptimes[spikecount] = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+					printf("sptimes[spikecount] with interpolation is %f. Without is %f. The difference is %f.\n", sptimes[spikecount], time, (sptimes[spikecount] - time));
+				}
+				else {
+					sptimes[spikecount] = time;
+				}
 			}
 			++spikecount;			//incremented at the end so it can be used as position in sptimes			
 		}
@@ -492,10 +501,16 @@ int main() {
 	snapshot(y, xx, nstep, V, fthresh, sndthresh, &spike);
 	printemp(&spike);
 	
+	int prcsteps;
 	extern int prcmode;
 	double phase;
-	prcmode = True;
-	int prcsteps = psteps * 5;
+	if (!UNPERT) {
+		prcmode = True;
+	}
+	else {
+		prcmode = False;
+	}
+	prcsteps = psteps * 5;
 	double targphase;
 	int targstep;
 	int pertpos;
