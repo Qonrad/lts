@@ -267,6 +267,7 @@ void rk4(double y[], double dydx[], int n, double x, double h, double yout[], do
 	free(dym);
 	free(dyt);
 	free(yt);
+	//STU
 }
 
 void makedata(double** y, double *xx, int nstep, int var, const char *filename) {	//makes a .data file with time and the specified variable, named with const char
