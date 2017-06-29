@@ -42,25 +42,25 @@
 #define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
 #define USE_HIGHPROPOFOL 0
 #define PROPOFOL_START 300
-#define PROPOFOL_END 20000
+#define PROPOFOL_END 50000
 #define LOWPROP_GSYN 0.25
 #define LOWPROP_TAU 10
 #define HIGHPROP_GSYN 0.5
 #define HIGHPROP_TAU 20
 #define STARTTIME 0
-#define ENDTIME 20000
-#define STEPSIZE 0.02
+#define ENDTIME 50000
+#define STEPSIZE 0.01
 #define DELAY 0.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
-#define SAMPLESIZE 80 		//number of spikes that are averaged together to give unperturbed period
-#define OFFSET 10			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
+#define SAMPLESIZE 400 		//number of spikes that are averaged together to give unperturbed period
+#define OFFSET 200			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population
 #define MYCLUSTER 10		//number of neurons in the simulated neuron's population
-#define DO_PRC 0			//toggle for prc
-#define DO_TRACE 1			//toggles doing trace for a single 
+#define DO_PRC 1			//toggle for prc
+#define DO_TRACE 0			//toggles doing trace for a single 
 #define TPHASE 0.995
-#define INTERVAL 200			//number of intervals prc analysis will be done on
+#define INTERVAL 500			//number of intervals prc analysis will be done on
 #define True 1
 #define False 0
 #define PRCSKIP 0
@@ -307,10 +307,20 @@ void copyab(double *a, double *b, int len) {									//function to copy array of
 	}
 	return;
 }
+void printperiod(double *periodarray, int len, const char *filename) {	//makes a .data file with time and the specified variable, named with const char
+	int i;
+	FILE *fopen(),*fp;
+	fp = fopen(filename, "w");
+	for (i = 1; i < len + 1; i++) {
+		fprintf(fp, "%d %f\n", i, periodarray[i - 1]);
+	}
+	fclose(fp);
+}
+
 
 // This function is inefficient and should be optimized.
 void snapshot(double** y, double *xx, int nstep, int var, double timestart, double timestop, Template *temp) {
-	temp->steps = (int)((timestop - timestart) / STEPSIZE);
+	temp->steps = (int)(round((timestop - timestart) / STEPSIZE));
 	temp->volts = (double*) malloc(sizeof(double) * temp->steps);
 	int i, place = 0;
 	for (i = 0; i < nstep + 1; ++i) {
@@ -442,8 +452,14 @@ int main() {
 		
 		if (spikecount > OFFSET) {	//finding time of threshold crossings for snapshot
 			if (fthresh == -1.0 && vout[0] >= STHRESHOLD && v[0] < STHRESHOLD) {
-				fthresh = time;
-				for (i = 0; i < N; ++i) {			//puts initial state variables into spike template
+				if (INTERPOLATE) {
+					fthresh = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+				}
+				else {
+					fthresh = time;
+				}
+				spike.init[0] = -50.0;
+				for (i = 1; i < N; ++i) {			//puts initial state variables into spike template
 					spike.init[i] = vout[i];
 				}
 				for (i = 0; i < dsteps; ++i) {
@@ -452,7 +468,12 @@ int main() {
 				spike.bufpos = bufpos;
 			}
 			else if (fthresh != -1.0 && sndthresh == -1.0 && vout[0] <= STHRESHOLD && v[0] > STHRESHOLD) {
-				sndthresh = time;
+				if (INTERPOLATE) {
+					sndthresh = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+				}
+				else {
+					sndthresh = time;
+				}
 			}
 		}
 				
@@ -484,8 +505,10 @@ int main() {
 			sumdiffs += sptimes[i + 1] - sptimes[i];
 			spdiffs[i - OFFSET] = sptimes[i + 1] - sptimes[i];
 		}
+		printdarr(spdiffs, SAMPLESIZE - 1);
+		printperiod(spdiffs, SAMPLESIZE - 1, "period.data");
 		normalperiod = sumdiffs / SAMPLESIZE;
-		psteps = normalperiod / STEPSIZE;
+		psteps = (int)round(normalperiod / STEPSIZE);
 		periodsd = calculateSD(spdiffs, SAMPLESIZE - 1);
 		printf("The average unperturbed period is %f, which is approximately %d steps.\n", normalperiod, psteps);
 		printf("The standard deviation is %f.\n", periodsd);
@@ -504,12 +527,6 @@ int main() {
 	int prcsteps;
 	extern int prcmode;
 	double phase;
-	if (!UNPERT) {
-		prcmode = True;
-	}
-	else {
-		prcmode = False;
-	}
 	prcsteps = psteps * 5;
 	double targphase;
 	int targstep;
@@ -520,6 +537,13 @@ int main() {
 	//~ int flag3;		//third period complete after perturbation, currently unused
 	
 	if (DO_TRACE) {
+		if (!UNPERT) {
+			prcmode = True;
+		}
+		else {
+			prcmode = False;
+			prcsteps = psteps;
+		}
 		Phipair trace;
 		targphase = TPHASE;
 		targstep = (PRCSKIP) ? (psteps * (1 + targphase)) : (psteps * targphase);
@@ -571,11 +595,12 @@ int main() {
 			else {
 				bufpos = 0;
 			}
-			
-			if (k == targstep) {	//activates perturbation mode if on correct step, allows derivs() to start using the "perturbation synapse" (a [pre-recorded stimulus of the same identical neuron)
-				//~ printf("%f\n", time);
-				pertmode = True;
-				flag = True;
+			if (!UNPERT) {
+				if (k == targstep) {	//activates perturbation mode if on correct step, allows derivs() to start using the "perturbation synapse" (a [pre-recorded stimulus of the same identical neuron)
+					//~ printf("%f\n", time);
+					pertmode = True;
+					flag = True;
+				}
 			}
 			if (pertmode) {
 				if (pertpos < spike.steps - 1) {
@@ -602,8 +627,6 @@ int main() {
 				y[k + 1][i] = v[i];
 			}
 		}
-		
-		
 		
 		makedata(y, xx, prcsteps, V, "tracev.data");	
 		makedata(y, xx, prcsteps, M, "tracem.data");
