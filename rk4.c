@@ -60,7 +60,7 @@
 #define DO_PRC 1			//toggle for prc
 #define DO_TRACE 0			//toggles doing trace for a single 
 #define TPHASE 0.995
-#define INTERVAL 500			//number of intervals prc analysis will be done on
+#define INTERVAL 100			//number of intervals prc analysis will be done on
 #define True 1
 #define False 0
 #define PRCSKIP 0
@@ -507,7 +507,7 @@ int main() {
 		}
 		printdarr(spdiffs, SAMPLESIZE - 1);
 		printperiod(spdiffs, SAMPLESIZE - 1, "period.data");
-		normalperiod = sumdiffs / SAMPLESIZE;
+		normalperiod = sumdiffs / (SAMPLESIZE - 1);
 		psteps = (int)round(normalperiod / STEPSIZE);
 		periodsd = calculateSD(spdiffs, SAMPLESIZE - 1);
 		printf("The average unperturbed period is %f, which is approximately %d steps.\n", normalperiod, psteps);
