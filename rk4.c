@@ -60,12 +60,13 @@
 #define DO_PRC 1			//toggle for prc
 #define DO_TRACE 0			//toggles doing trace for a single 
 #define TPHASE 0.995
-#define INTERVAL 100			//number of intervals prc analysis will be done on
+#define INTERVAL 200			//number of intervals prc analysis will be done on
 #define True 1
 #define False 0
 #define PRCSKIP 0
 #define INTERPOLATE 1
 #define UNPERT 1
+#define PLONG 0
 
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
@@ -320,14 +321,25 @@ void printperiod(double *periodarray, int len, const char *filename) {	//makes a
 
 // This function is inefficient and should be optimized.
 void snapshot(double** y, double *xx, int nstep, int var, double timestart, double timestop, Template *temp) {
-	temp->steps = (int)(round((timestop - timestart) / STEPSIZE));
+	temp->steps = (int)(ceil((timestop - timestart) / STEPSIZE) + 2);
 	temp->volts = (double*) malloc(sizeof(double) * temp->steps);
 	int i, place = 0;
-	for (i = 0; i < nstep + 1; ++i) {
+	if (var == V) {
+		for (i = 1; i < nstep + 1; ++i) {
+			if (timestart < xx[i] && xx[i] < timestop) {
+				temp->volts[place] = y[i][var];
+				place++;
+			}
+		}
+		temp->volts[0] = STHRESHOLD;
+	}
+	else {
+		for (i = 0; i < nstep + 1; ++i) {
 		if (timestart < xx[i] && xx[i] < timestop) {
 			temp->volts[place] = y[i][var];
 			place++;
 		}
+	}
 	}
 	return;
 }
@@ -492,11 +504,15 @@ int main() {
 			y[k + 1][i] = v[i];
 		}
 	}
-	
-	makedata(y, xx, nstep, V, "v.data");
-	makedata(y, xx, nstep, M, "m.data");
-	makedata(y, xx, nstep, H, "h.data");
-	makedata(y, xx, nstep, NV, "n.data");
+	if (PLONG) {
+		makedata(y, xx, nstep, V, "v.data");
+		makedata(y, xx, nstep, M, "m.data");
+		makedata(y, xx, nstep, H, "h.data");
+		makedata(y, xx, nstep, NV, "n.data");
+	}
+	else {
+		printf("\n\nSince PLONG == 0, v-n.data are not being written\n\n");
+	}
 	dump_(vout);
 	
 	printf("This simulation counted %d spikes in all.\n", spikecount);
