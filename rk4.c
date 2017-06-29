@@ -57,15 +57,15 @@
 #define OFFSET 200			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population
 #define MYCLUSTER 10		//number of neurons in the simulated neuron's population
-#define DO_PRC 1			//toggle for prc
-#define DO_TRACE 0			//toggles doing trace for a single 
-#define TPHASE 0.995
+#define DO_PRC 0			//toggle for prc
+#define DO_TRACE 1			//toggles doing trace for a single 
+#define TPHASE 0.985
 #define INTERVAL 200			//number of intervals prc analysis will be done on
 #define True 1
 #define False 0
 #define PRCSKIP 0
 #define INTERPOLATE 1
-#define UNPERT 1
+#define UNPERT 0
 #define PLONG 0
 
 double current[C];	//external current variable, similar to how Canavier did it
@@ -126,11 +126,6 @@ typedef struct Templates {
 	double ibuf[(int)(DELAY / STEPSIZE)];
 	int bufpos;
 } Template;
-
-typedef struct TCross {
-	int poststep;
-	double itime;
-} Cross;
 
 //~ void interpolate(Cross* c, prev, postv) {
 	//~ 
@@ -321,7 +316,7 @@ void printperiod(double *periodarray, int len, const char *filename) {	//makes a
 
 // This function is inefficient and should be optimized.
 void snapshot(double** y, double *xx, int nstep, int var, double timestart, double timestop, Template *temp) {
-	temp->steps = (int)(ceil((timestop - timestart) / STEPSIZE) + 2);
+	temp->steps = (int)(round((timestop - timestart) / STEPSIZE));
 	temp->volts = (double*) malloc(sizeof(double) * temp->steps);
 	int i, place = 0;
 	if (var == V) {
@@ -332,6 +327,7 @@ void snapshot(double** y, double *xx, int nstep, int var, double timestart, doub
 			}
 		}
 		temp->volts[0] = STHRESHOLD;
+		temp->volts[temp->steps - 1] = STHRESHOLD;
 	}
 	else {
 		for (i = 0; i < nstep + 1; ++i) {
