@@ -59,7 +59,7 @@
 #define MYCLUSTER 10		//number of neurons in the simulated neuron's population
 #define DO_PRC 0			//toggle for prc
 #define DO_TRACE 1			//toggles doing trace for a single 
-#define TPHASE 0.985
+#define TPHASE 0.99
 #define INTERVAL 200			//number of intervals prc analysis will be done on
 #define True 1
 #define False 0
@@ -544,8 +544,8 @@ int main() {
 	int targstep;
 	int pertpos;
 	int flag;		//perturbation happened
-	int flag1;		//first period complete after perturbation
-	int flag2;		//second period complete after perturbation
+	double flag1;		//first period complete after perturbation
+	double flag2;		//second period complete after perturbation
 	//~ int flag3;		//third period complete after perturbation, currently unused
 	
 	if (DO_TRACE) {
@@ -560,6 +560,8 @@ int main() {
 		targphase = TPHASE;
 		targstep = (PRCSKIP) ? (psteps * (1 + targphase)) : (psteps * targphase);
 		trace.phase = targphase;
+		flag1 = 0.0;
+		flag2 = 0.0;
 		
 		for (i = 0; i < N; ++i) {
 			dv[i] = 0.0;
@@ -623,16 +625,29 @@ int main() {
 					pertmode = False;
 				}
 			}
-			if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && !flag1) {
-				flag1 = k;
-				trace.fphi1 = (PRCSKIP) ? ((((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps)) : ((double)(k) - (double)(psteps))/ (double)(psteps);
+			if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 == 0.0) {
+				
+				if (INTERPOLATE) {
+					flag1 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+					trace.fphi1 = (PRCSKIP) ? ((((double)(flag1) - (double)(normalperiod)) - (double)(normalperiod)) / (double)(normalperiod)) : ((double)(flag1) - (double)(normalperiod))/ (double)(normalperiod);
+				}
+				else {
+					flag1 = k;
+					trace.fphi1 = (PRCSKIP) ? ((((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps)) : ((double)(k) - (double)(psteps))/ (double)(psteps);
+				}
 				printf("The trace was done at phase %f. The step targeted was %d (time = %f), and the total number of steps in the unperturbed period was %d.\n", TPHASE, targstep, time, psteps);
 				printf("f(phi)1 is %f.\n", trace.fphi1);
 			}
-			else if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 != 0 && !flag2) {
-				flag2 = k;
-				trace.fphi2 = ((double)(k) - (double)(flag1))/ (double)(psteps);
-				//~ printf("k %d ptime %f targstep %d prc[prcpos].phase %f time %f prc[prcpos].fphi1 %f flag1 %d flag2 %d prc[prcpos].fphi2 %f\n", k, ptime, targstep, prc[prcpos].phase, time, prc[prcpos].fphi1, flag1, flag2, prc[prcpos].fphi2);
+			else if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 != 0.0 && flag2 == 0.0) {
+				if (INTERPOLATE) {
+					flag2 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+					trace.fphi2 = (PRCSKIP) ? (((((double)(flag2) - (double)(flag1)) - (double)(normalperiod)) - (double)(flag1)) / (double)(normalperiod)) : ((double)(flag2) - (double)(flag1) - (double)(normalperiod))/ (double)(normalperiod);
+				}
+				else {
+					flag2 = k;
+					trace.fphi2 = ((double)(k) - (double)(flag1))/ (double)(psteps);
+					//~ printf("k %d ptime %f targstep %d prc[prcpos].phase %f time %f prc[prcpos].fphi1 %f flag1 %d flag2 %d prc[prcpos].fphi2 %f\n", k, ptime, targstep, prc[prcpos].phase, time, prc[prcpos].fphi1, flag1, flag2, prc[prcpos].fphi2);
+				}
 			}
 			for (i = 0; i < N; i++) {
 				v[i] = vout[i];
@@ -658,8 +673,8 @@ int main() {
 			
 			
 			flag = False;
-			flag1 = False;
-			flag2 = False;
+			flag1 = 0.0;
+			flag2 = 0.0;
 			//~ flag3 = False;
 			
 			for (i = 0; i < N; ++i) {
@@ -723,18 +738,40 @@ int main() {
 						pertmode = False;
 					}
 				}
-				if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 == 0) {
-					flag1 = k;
-					prc[prcpos].fphi1 = (PRCSKIP) ? ((((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps)) : ((double)(k) - (double)(psteps))/ (double)(psteps);
-					prc[prcpos].phase = targphase;
-					//~ ((double)targstep - (double)psteps) / (k - psteps);
+				if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 == 0.0) {
 					
+					//~ if (INTERPOLATE) {
+						//~ flag1 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+						//~ trace.fphi1 = (PRCSKIP) ? ((((double)(flag1) - (double)(normalperiod)) - (double)(normalperiod)) / (double)(normalperiod)) : ((double)(flag1) - (double)(normalperiod))/ (double)(normalperiod);
+					//~ }
+					
+					if (INTERPOLATE) {
+						flag1 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+						prc[prcpos].fphi1 = (PRCSKIP) ? ((((double)(flag1) - (double)(normalperiod)) - (double)(normalperiod)) / (double)(normalperiod)) : ((double)(flag1) - (double)(normalperiod)) / (double)(normalperiod);
+						prc[prcpos].phase = targphase;
+						//~ printf("prc[prcpos].fphi1 %f\n\n", prc[prcpos].fphi1);
+					}
+					else {
+						flag1 = k;
+						prc[prcpos].fphi1 = (PRCSKIP) ? ((((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps)) : ((double)(k) - (double)(psteps))/ (double)(psteps);
+						prc[prcpos].phase = targphase;
+						//~ ((double)targstep - (double)psteps) / (k - psteps);
+					}
+					//~ prcpos++;
 				}
-				else if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 != 0 && !flag2) {
-					flag2 = k;
-					prc[prcpos].fphi2 = ((double)(k) - (double)(flag1))/ (double)(psteps);
-					printf("k %d ptime %f targstep %d prc[prcpos].phase %f time %f prc[prcpos].fphi1 %f flag1 %d flag2 %d prc[prcpos].fphi2 %f\n", k, ptime, targstep, prc[prcpos].phase, time, prc[prcpos].fphi1, flag1, flag2, prc[prcpos].fphi2);
-					prcpos++;
+				else if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 != 0.0 && flag2 == 0.0) {
+					if (INTERPOLATE) {
+						flag2 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+						prc[prcpos].fphi2 = ((double)(flag2) - (double)(flag1) - (double)(normalperiod)) / (double)(normalperiod);
+						printf("k %d prcpos %d ptime %f targstep %d prc[prcpos].phase %f time %f prc[prcpos].fphi1 %f flag1 %f flag2 %f prc[prcpos].fphi2 %f\n", k, prcpos, ptime, targstep, prc[prcpos].phase, time, prc[prcpos].fphi1, flag1, flag2, prc[prcpos].fphi2);
+						prcpos++;
+					}
+					else {
+						flag2 = k;
+						prc[prcpos].fphi2 = ((double)(k) - (double)(flag1))/ (double)(psteps);
+						printf("k %d prcpos %d ptime %f targstep %d prc[prcpos].phase %f time %f prc[prcpos].fphi1 %f flag1 %f flag2 %f prc[prcpos].fphi2 %f\n", k, prcpos, ptime, targstep, prc[prcpos].phase, time, prc[prcpos].fphi1, flag1, flag2, prc[prcpos].fphi2);
+						prcpos++;
+					}
 				}
 				for (i = 0; i < N; i++) {
 					v[i] = vout[i];
@@ -749,7 +786,7 @@ int main() {
 	for (i = 0; i < (nstep + 1); i++) {		
 		free(y[i]);
 	}
-		
+	free(xx);	
 	
 	free(spike.volts);
 	
