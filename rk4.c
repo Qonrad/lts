@@ -478,13 +478,23 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 				y[k + 1][i] = v[i];
 			}
 		}
-	
 
 	if (tracedata) {
-		makedata(y, xx, nstep, V, "tracev.data");	
-		makedata(y, xx, nstep, M, "tracem.data");
-		makedata(y, xx, nstep, H, "traceh.data");
-		makedata(y, xx, nstep, NV, "tracen.data");
+		char a[(int)strlen(tracename) + (int)strlen("*.data")];
+		sprintf(a, "%sv.data", tracename);
+		makedata(y, xx, nstep, V, a);
+		sprintf(a, "%sm.data", tracename);	
+		makedata(y, xx, nstep, M, a);
+		sprintf(a, "%sh.data", tracename);
+		makedata(y, xx, nstep, H, a);
+		sprintf(a, "%sn.data", tracename);
+		makedata(y, xx, nstep, NV, a);
+		sprintf(a, "%sl.data", tracename);
+		makedata(y, xx, nstep, MN, a);
+		sprintf(a, "%ss.data", tracename);
+		makedata(y, xx, nstep, S, a);
+		sprintf(a, "%sp.data", tracename);
+		makedata(y, xx, nstep, P, a);
 	}
 	for (i = 0; i < (nstep + 1); i++) {		
 		free(y[i]);
@@ -924,7 +934,7 @@ int main() {
 	if (DO_TRACE) {
 		Phipair trace;
 		trace.phase = TPHASE;
-		pertsim(normalperiod, spike, &trace, 1, "placeholder");
+		pertsim(normalperiod, spike, &trace, 1, "trace");
 	}
 	for (i = 0; i < (nstep + 1); i++) {		
 		free(y[i]);
