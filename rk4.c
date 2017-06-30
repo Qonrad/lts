@@ -57,10 +57,10 @@
 #define OFFSET 200			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population
 #define MYCLUSTER 10		//number of neurons in the simulated neuron's population
-#define DO_PRC 0			//toggle for prc
-#define DO_TRACE 0			//toggles doing trace for a single 
-#define TPHASE 0.2
-#define INTERVAL 200			//number of intervals prc analysis will be done on
+#define DO_PRC 1			//toggle for prc
+#define DO_TRACE 1			//toggles doing trace for a single 
+#define TPHASE 0.985
+#define INTERVAL 500			//number of intervals prc analysis will be done on
 #define True 1
 #define False 0
 #define PRCSKIP 0
@@ -624,7 +624,8 @@ void prc(Template spike, int interval, double normalperiod) {
 		prc[i].phase = ((double)i) * (1.0 / (double)interval);
 		pertsim(normalperiod, spike, &prc[i], 0, "test");
 	}
-	printphi(prc, interval, 1, "prcnew.data");
+	printphi(prc, interval, 1, "prc1.data");
+	printphi(prc, interval, 2, "prc2.data");
 }
 
 int main() {
@@ -793,7 +794,7 @@ int main() {
 	
 	snapshot(y, xx, nstep, V, fthresh, sndthresh, &spike);
 	printemp(&spike);
-	
+	/*
 	int prcsteps;
 	extern int prcmode;
 	double phase;
@@ -1040,12 +1041,16 @@ int main() {
 		printphi(prc, INTERVAL, 1, "prc1.data");
 		printphi(prc, INTERVAL, 2, "prc2.data");
 	}
+	*/
+	if (DO_TRACE) {
+		Phipair trace;
+		trace.phase = TPHASE;
+		pertsim(normalperiod, spike, &trace, 1, "placeholder");
+	}
+	if (DO_PRC) {
+		prc(spike, INTERVAL, normalperiod);
+	}
 	
-	//~ //testing pertsim function
-	Phipair a;
-	a.phase = TPHASE;
-	pertsim(normalperiod, spike, &a, 1, "trace");
-	prc(spike, INTERVAL, normalperiod);
 	for (i = 0; i < (nstep + 1); i++) {		
 		free(y[i]);
 	}
