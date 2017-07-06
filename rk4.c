@@ -25,7 +25,7 @@
 #define S 5
 #define P 6
 #define CM 1.00 /*uF/cm2*/
-#define I_APP 1.81 /*uA/cm2*/ 
+#define I_APP 1.81 /*uA/cm2*/ //was 1.81 for the prc stuff, experimenting with changing this, risky
 #define I_APP_STEP -3.3
 #define E_NA  50.0
 #define E_K  -100.0
@@ -37,11 +37,11 @@
 #define G_L   0.1
 #define G_SYN  0.165		//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
 #define TAUSYN 10			//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
-#define USE_I_APP 0
+#define USE_I_APP 0			//really should be called "USE_IAPP_STEP"
 #define I_APP_START 500
 #define I_APP_END 501
-#define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
-#define USE_HIGHPROPOFOL 0
+#define USE_LOWPROPOFOL 0	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
+#define USE_HIGHPROPOFOL 1
 #define PROPOFOL_START 300
 #define PROPOFOL_END 100000
 #define LOWPROP_GSYN 0.25
@@ -51,7 +51,7 @@
 #define STARTTIME 0
 #define ENDTIME 4700
 #define STEPSIZE 0.01
-#define DELAY 1.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
+#define DELAY 0.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 5 		//number of spikes that are averaged together to give unperturbed period
@@ -146,19 +146,19 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight[N
 	double iapp, synsum, subsum;
 	double *pert;
 	int i, j;
-	
-	
-	if (USE_I_APP && !(prcmode)) {
-		iapp = (time < I_APP_START || time > I_APP_END) ? I_APP : I_APP_STEP;	
-	}
-	
-	else {
-		iapp = I_APP;
-	}
-	
-	
+
 	//~ gsyn *=  weight[i][pre];
 	for (i = 0; i < NN; i++) {
+		
+		if (i == 0 && USE_I_APP && !(prcmode)) {
+			iapp = (time < I_APP_START || time > I_APP_END) ? I_APP : I_APP_STEP;	
+		}
+	
+		else {
+			iapp = I_APP;
+		}
+		
+		
 		//cell is self-connected and the one that is measured for the PRC.
 		// (((y[V + (N * i)] - (-54)) / 4) < 10e-6) ? (0.32 * 4.0) :
 		current[I_NA] = G_NA * y[H + (N * i)] * pow(y[M + (N * i)], 3.0) * (y[V + (N * i)] - E_NA);
@@ -616,7 +616,7 @@ int main() {
 	for (i = 0; i < NN; i++) {
 		weight[i] = (double*) malloc(sizeof(double) * NN);
 		for (pre = 0; pre < NN; ++pre) {
-			weight[i][pre] = 1.0 / ((double)(NN));
+			weight[i][pre] = 1.0;
 		}
 		if (!SELF) {
 			weight[i][i] = 0.;
@@ -668,8 +668,6 @@ int main() {
 	//Variables to do with conducting prc
 	extern int pertmode;
 	extern double *pert;
-	
-	
 	
 	time = STARTTIME;
 	scan_(v);				//scanning in initial variables (state variables only) 
@@ -800,7 +798,9 @@ int main() {
 			bufpos = 0;
 		}
 */
-		bufpos = (++bufpos)%dsteps;
+		if (DELAY >= STEPSIZE) {
+			bufpos = (++bufpos)%dsteps;
+		}
 		
 		for (i = 0; i < (N * NN); i++) {
 			v[i] = vout[i];
