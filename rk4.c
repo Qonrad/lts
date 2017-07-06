@@ -37,11 +37,11 @@
 #define G_L   0.1
 #define G_SYN  0.165		//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
 #define TAUSYN 10			//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
-#define USE_I_APP 1
+#define USE_I_APP 0
 #define I_APP_START 500
 #define I_APP_END 501
-#define USE_LOWPROPOFOL 0	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
-#define USE_HIGHPROPOFOL 1
+#define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
+#define USE_HIGHPROPOFOL 0
 #define PROPOFOL_START 300
 #define PROPOFOL_END 100000
 #define LOWPROP_GSYN 0.25
@@ -677,8 +677,12 @@ int main() {
 	printdarr(v, (N * NN));
 	for (i = 0; i < (dsteps); ++i) {//sets every double in buffer(s) to be equal to the steady state (initial) voltage that was just scanned in
 		for (j = 0; j < NN; ++j) {
-			//TODO: this is only for delay! Redo for no delays
-			buf[i][j] = 2 * (1 + tanh(v[V + (N * j)] / 4.0));
+			if (DELAY >= STEPSIZE) { 
+				buf[i][j] = 2 * (1 + tanh(v[V + (N * j)] / 4.0));
+			}
+			else {
+				buf[i][j] = v[V + (N * j)];
+			}
 		}
 	}
 	fprintf(stderr, "test4\n");
@@ -711,14 +715,14 @@ int main() {
 		}
 		
 		del = buf[bufpos]; //moves the pointer one step ahead in the buffer
-		printdarr(v, (N * NN));
-		fprintf(stderr, "test5a k = %d\n", k);
+		//~ printdarr(v, (N * NN));
+		//~ fprintf(stderr, "test5a k = %d\n", k);
 		derivs(time, v, dv, del, weight);										//actually does the step
-		printdarr(v, (N * NN));
-		fprintf(stderr, "test5b k = %d\n", k);
+		//~ printdarr(v, (N * NN));
+		//~ fprintf(stderr, "test5b k = %d\n", k);
 		rk4(v, dv, (N * NN), time, STEPSIZE, vout, del, weight);		//actually dose the step
-		printdarr(v, (N * NN));
-		fprintf(stderr, "test5c k = %d\n", k);
+		//~ printdarr(v, (N * NN));
+		//~ fprintf(stderr, "test5c k = %d\n", k);
 		for (j = 0; j < NN; ++j) {								//IMPORTANT: this calculates the f(vj) outside of derivs and places that into the buffer, preventing a large waste of computational time
 			del[j] = 2 * (1 + tanh(vout[V + (N * j)] / 4.0));		//dereferences the delay pointer, and puts the previous f(vj) in the same spot
 		}
@@ -806,6 +810,7 @@ int main() {
 	fprintf(stderr, "test6\n");
 	if (PLONG) {
 		makedata(y, xx, nstep, V, "v.data");
+		makedata(y, xx, nstep, (V + N), "v2.data");
 		makedata(y, xx, nstep, M, "m.data");
 		makedata(y, xx, nstep, H, "h.data");
 		makedata(y, xx, nstep, NV, "n.data");
@@ -875,7 +880,7 @@ int main() {
 	}
 	free(xx);	
 	
-	free(spike.volts);
+	//~ free(spike.volts);
 	
 	return 0;
 }
