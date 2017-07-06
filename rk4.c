@@ -50,7 +50,7 @@
 #define STARTTIME 0
 #define ENDTIME 4700
 #define STEPSIZE 0.01
-#define DELAY 3.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
+#define DELAY 0.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 5 		//number of spikes that are averaged together to give unperturbed period
@@ -688,7 +688,7 @@ int main() {
 		makedata(y, xx, nstep, M, "m.data");
 		makedata(y, xx, nstep, H, "h.data");
 		makedata(y, xx, nstep, NV, "n.data");
-		//~ makefull(y, xx, nstep, "3delfull.data");
+		makefull(y, xx, nstep, "nodelfull.data");
 	}
 	else {
 		printf("\n\nSince PLONG == 0, v-n.data are not being written\n\n");
@@ -718,7 +718,7 @@ int main() {
 	printf("fthresh = %f and sndthresh = %f\n", fthresh, sndthresh);
 	
 	
-	makeunpert(y, xx, normalperiod, startstep, 0, 1, "unpertvx.data");
+	//~ makeunpert(y, xx, normalperiod, startstep, 0, 1, "unpertvx.data");
 	
 	
 	
