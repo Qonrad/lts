@@ -184,9 +184,9 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight[N
 		//3.209 * 0.0001 * ((y[V + (N * i)] + 30.0) / (1.0 - exp(-(y[V + (N * i)] + 30.0) / 9.0)) * (1.0 - y[MN + (N * i)]) + (y[V + (N * i)] + 30.0) / (1.0 - exp((y[V + (N * i)] + 30.0) / 9.0)) * y[MN + (N * i)]); 
 		
 		//~ fprintf(stderr, "%lf\n", synsum);
+		synsum = 0.0;
 		if (DELAY >= STEPSIZE) {
 			//newest edit: *oldv should be the 2 * tanh() function of the previous voltage, moved outside of the driver to prevent waste of computational resources
-			synsum = 0.0;
 			for (j = 0; j < NN; ++j) {
 					synsum += oldv[j] * weight[i][j];
 			}
@@ -197,7 +197,11 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight[N
 			//~ printf("I exist at time %f.\n", time);
 		}
 		else {
-			dydx[S + (N * i)] = 2 * (1 + tanh(y[V + (N * i)] / 4.0)) * (1 - y[S + (N * i)]) - y[S + (N * i)] / tau;
+			for (j = 0; j < NN; ++j) {
+					synsum += (2 * (1 + tanh(y[V + (N * j)] / 4.0))) * weight[i][j];
+			}
+			dydx[S + (N * i)] = synsum * (1 - y[S + (N * i)]) - y[S + (N * i)] / tau;
+			//~ dydx[S + (N * i)] = 2 * (1 + tanh(y[V + (N * i)] / 4.0)) * (1 - y[S + (N * i)]) - y[S + (N * i)] / tau;
 		}
 		if (NN == 1) {
 			if (pertmode) {
