@@ -51,7 +51,7 @@
 #define STARTTIME 0
 #define ENDTIME 4700
 #define STEPSIZE 0.01
-#define DELAY 0.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
+#define DELAY 50.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 5 		//number of spikes that are averaged together to give unperturbed period
@@ -66,7 +66,7 @@
 #define False 0
 #define INTERPOLATE 1
 #define PLONG 1
-#define SELF 0
+//~ #define SELF 0
 
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
@@ -142,7 +142,7 @@ inline double f(double v, double a, double th, double q) {
 	return a * ((v - th) / (1 - exp(-(v - th) / q)));
 }
 
-void derivs(double time, double *y, double *dydx, double *oldv, double* weight[NN]) { 
+void derivs(double time, double *y, double *dydx, double *oldv, double* weight) { 
 	double iapp, synsum, subsum;
 	double *pert;
 	int i, j;
@@ -188,7 +188,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight[N
 		if (DELAY >= STEPSIZE) {
 			//newest edit: *oldv should be the 2 * tanh() function of the previous voltage, moved outside of the driver to prevent waste of computational resources
 			for (j = 0; j < NN; ++j) {
-					synsum += oldv[j] * weight[i][j];
+					synsum += oldv[j] * weight[i*NN+j];
 			}
 
 			//?????????????????vvvvvvv
@@ -198,7 +198,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight[N
 		}
 		else {
 			for (j = 0; j < NN; ++j) {
-					synsum += (2 * (1 + tanh(y[V + (N * j)] / 4.0))) * weight[i][j];
+					synsum += (2 * (1 + tanh(y[V + (N * j)] / 4.0))) * weight[i*NN+j];
 			}
 			dydx[S + (N * i)] = synsum * (1 - y[S + (N * i)]) - y[S + (N * i)] / tau;
 			//~ dydx[S + (N * i)] = 2 * (1 + tanh(y[V + (N * i)] / 4.0)) * (1 - y[S + (N * i)]) - y[S + (N * i)] / tau;
@@ -219,21 +219,11 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight[N
 	return;
 }
 
-void scan_(double *Y) {
+void scan_(double *Y, int n, const char *filename) {
 	FILE *fopen(),*sp;
 	int i, j;
-	sp = fopen("state.data","r");
-/*	for (i = 0; i < (N); ++i) {
-		fscanf(sp, "%lf\n", &Y[i]);
-		if (NN > 1) {
-			for (j = 0; j < NN; ++j) {
-				Y[i + (N * j)] = Y[i];
-			}
-		}
-		fprintf(stderr, "%lf\n", Y[i]);
-	}
-*/ 
-	for (i = 0; i < N*NN; ++i)
+	sp = fopen(filename,"r");
+	for (i = 0; i < n; ++i)
 		if (fscanf(sp, "%lf\n", &Y[i]) != 1){
 			fprintf(stderr, "Not enough variables in state.data file.\nNeed %d only %d given\n", N*NN, i-1);
 			exit(1);
@@ -241,6 +231,7 @@ void scan_(double *Y) {
 	
 	fclose(sp);
 }
+
 
 void dump_(double Y[]) {
 	FILE *fopen(),*sp;
@@ -257,7 +248,7 @@ void dump_(double Y[]) {
 	fclose(sp);
 }
 
-void rk4(double y[], double dydx[], int n, double x, double h, double yout[], double *oldv, double* weight[NN]) {
+void rk4(double y[], double dydx[], int n, double x, double h, double yout[], double *oldv, double* weight) {
 	int i;
 	double xh, hh, h6, *dym, *dyt, *yt;
 	
@@ -616,16 +607,18 @@ int main() {
 	double v[N * NN], vout[N * NN], dv[N * NN];					//v = variables (state and current), vout = output variables, dv = derivatives (fstate)
 	double **y, *xx; 						//results variables, y[1..N][1..NSTEP+1], xx[1..NSTEP+1]
 	extern double current[];				//external variable declaration
-	double* weight[NN];
-	for (i = 0; i < NN; i++) {
-		weight[i] = (double*) malloc(sizeof(double) * NN);
-		for (pre = 0; pre < NN; ++pre) {
-			weight[i][pre] = 1.0;
-		}
-		if (!SELF) {
-			weight[i][i] = 0.;
-		}
-	}
+	double weight[NN*NN];
+	scan_(weight, NN*NN, "weights.data");
+	//~ for (i = 0; i < NN; i++) {
+		 //~ weight[i] = (double*) malloc(sizeof(double) * NN);
+		//~ for (pre = 0; pre < NN; ++pre) {
+			//~ weight[i][pre] = 1.0;
+		//~ }
+		//~ if (!SELF) {
+			//~ weight[i][i] = 0.;
+		//~ }
+	//~ }
+	
 	fprintf(stderr, "test1\n");
 	//Variables to do with delay
 	int dsteps = (int)(DELAY / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
@@ -674,7 +667,7 @@ int main() {
 	extern double *pert;
 	
 	time = STARTTIME;
-	scan_(v);				//scanning in initial variables (state variables only) 
+	scan_(v, N*NN, "state.data");				//scanning in initial variables (state variables only) 
 	fprintf(stderr, "test3\n");
 	printdarr(v, (N * NN));
 	for (i = 0; i < (dsteps); ++i) {//sets every double in buffer(s) to be equal to the steady state (initial) voltage that was just scanned in
@@ -879,6 +872,9 @@ int main() {
 	* 
 */
 
+	for (i = 0; i < dsteps; i++) {
+		free(buf[i]);
+	}
 	for (i = 0; i < (nstep + 1); i++) {		
 		free(y[i]);
 	}
