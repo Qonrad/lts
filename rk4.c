@@ -40,8 +40,8 @@
 #define USE_I_APP 1			//really should be called "USE_IAPP_STEP"
 #define I_APP_START 500
 #define I_APP_END 501
-#define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
-#define USE_HIGHPROPOFOL 0
+#define USE_LOWPROPOFOL 0	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
+#define USE_HIGHPROPOFOL 1
 #define PROPOFOL_START 300
 #define PROPOFOL_END 100000
 #define LOWPROP_GSYN 0.25
@@ -51,7 +51,7 @@
 #define STARTTIME 0
 #define ENDTIME 4700
 #define STEPSIZE 0.01
-#define DELAY 50.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
+#define DELAY 0.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 5 		//number of spikes that are averaged together to give unperturbed period
@@ -309,6 +309,20 @@ void makefull(double** y, double *xx, int nstep, const char *filename) {	//makes
 			fprintf(fp, "%f ", y[i][j]);
 		}
 		fprintf(fp, "%f\n", y[i][(N * NN) - 1]);
+	}
+	fclose(fp);
+}
+
+void makefullsingle(double** y, double *xx, int nstep, int neuron, const char *filename) {	//makes a .data file with time and the specified variable, named with const char
+	int i, j;
+	FILE *fopen(),*fp;
+	fp = fopen(filename, "w");
+	for (i = 0; i < nstep + 1; i++) {
+		fprintf(fp, "%f ", xx[i]);
+		for (j = 0; j < N - 1; j++) {
+			fprintf(fp, "%f ", y[i][j + (neuron * N)]);
+		}
+		fprintf(fp, "%f\n", y[i][(neuron * N) + (N - 1)]);
 	}
 	fclose(fp);
 }
@@ -811,6 +825,9 @@ int main() {
 		makedata(y, xx, nstep, M, "m.data");
 		makedata(y, xx, nstep, H, "h.data");
 		makedata(y, xx, nstep, NV, "n.data");
+		makefull(y, xx, nstep, "full.data");
+		makefullsingle(y, xx, nstep, 0, "0full.data");
+		makefullsingle(y, xx, nstep, 1, "1full.data");
 	}
 	else {
 		printf("\n\nSince PLONG == 0, v-n.data are not being written\n\n");
