@@ -39,8 +39,8 @@
 #define USE_I_APP 1
 #define I_APP_START 500
 #define I_APP_END 501
-#define USE_LOWPROPOFOL 0	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
-#define USE_HIGHPROPOFOL 1
+#define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
+#define USE_HIGHPROPOFOL 0
 #define PROPOFOL_START 300
 #define PROPOFOL_END 100000
 #define LOWPROP_GSYN 0.25
@@ -50,15 +50,15 @@
 #define STARTTIME 0
 #define ENDTIME 4700
 #define STEPSIZE 0.01
-#define DELAY 0.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
+#define DELAY 3.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 5 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 20			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
-#define POPULATION 20		//number of neurons in the whole population
-#define MYCLUSTER 10		//number of neurons in the simulated neuron's population
-#define DO_PRC 1			//toggle for prc
-#define DO_TRACE 1			//toggles doing trace for a single (or multiple phase perturbations) but each is recorded individually
+#define POPULATION 1		//number of neurons in the whole population, should be 20 for accurate representation of mccarthy
+#define MYCLUSTER 2			//number of neurons in the simulated neuron's population, should be 10 for accurate representation of mccarthy
+#define DO_PRC 0			//toggle for prc
+#define DO_TRACE 0			//toggles doing trace for a single (or multiple phase perturbations) but each is recorded individually
 #define TPHASE 0.985
 #define INTERVAL 100			//number of intervals prc analysis will be done on
 #define True 1
@@ -71,45 +71,6 @@ static double *del;
 static int prcmode;
 static int pertmode;
 double *pert;
-/*
-int deriv_(double *xp, double *Y, double *F) {
-	extern double current[C*NN]; 
-	int el,n,j;
-	double time_;
-	
-	time_ = *xp;
-	
-	double iapp; //Conrad, declares iapp variable for step I_APP
-	
-	//printf("time = %f\n", time_);
-	//printf("epsilon = %f		EPSILON = %f\n", epsilon, EPSILON);
-	iapp = (time_ < 330 && time_ >300.) ? 2. : I_APP;//Conrad, controls the I_APP
-	
-	for(j=0;j<NN;j++)
-	{
-		current[I_NA1 + N*j] = G_NA*y[H]*pow(y[Mp],3.0)*(y[V1 + N*j]-E_NA);
-		current[I_K1 + N*j] = G_K*pow(y[N1 + N*j],4.0)*(y[V1 + N*j] - E_K);
-		current[I_M1 + N*j] = G_M*y[MN1 + N*j]*(y[V1 + N*j] - E_K);
-		current[I_L1 + N*j] =  G_L*(y[V1 + N*j] - E_L);
-		current[I_S1 + N*j] = G_SYN * y[S1 + N*j] * (y[V1 + N*j] - E_SYN);		//~ for (n=0;n<NN;n++) {
-			//~ if(n!=j) {
-				//~ current[I_S1 + N*j] =   current[I_S1 + N*j] + G_SYN*y[S1 +N*n]*(y[V1 +N*j] - E_SYN);
-			//~ }
-		//~ }
-		F[V1 + N*j] = (iapp + EPSILON - current[I_NA1 + N*j] - current[I_K1 + N*j] - current[I_M1 + N*j] - current[I_L1 + N*j] - current[I_S1 + N*j])/CM;
-		F[M1 + N*j] = 0.32*(y[V1 + N*j]+54.0)/(1.0-exp(-(y[V1 + N*j]+54.0)/4.0))*(1.0-y[M1 + N*j])-0.28*(y[V1 + N*j]+27.0)/(exp((y[V1 + N*j]+27.0)/5.0)-1.0)*y[M1 + N*j];   
-		F[H1 + N*j] = 0.128*exp(-(y[V1 + N*j]+50.0)/18.0)*(1.0-y[H1 + N*j])-4.0/(1.0+exp(-(y[V1 + N*j]+27.0)/5.0))*y[H1 + N*j];   
-		F[N1 + N*j] = 0.032*(y[V1 + N*j]+52.0)/(1.0-exp(-(y[V1 + N*j]+52.0)/5.0))*(1.0-y[N1 + N*j])-0.5*exp(-(y[V1 + N*j]+57.0)/40.0)*y[N1 + N*j];  
-		F[MN1 + N*j] = 3.209*0.0001*((y[V1 + N*j]+30.0)/(1.0-exp(-(y[V1 + N*j]+30.0)/9.0))*(1.0-y[MN1 + N*j]) 
-					  + (y[V1 + N*j]+30.0)/(1.0-exp((y[V1 + N*j]+30.0)/9.0))*y[MN1 + N*j]); 
-		F[S1 + N*j] = 2*(1+tanh(y[V1 + N*j]/4.0))*(1-y[S1 + N*j])-y[S1 + N*j]/TAUSYN; //2*(1+tanh(y[V1 + N*j]/4.0))*(1-y[S1 + N*j])-y[S1 + N*j]/TAUSYN;  
-	
-	}
-	//~ printf("current\n");
-	//~ printdarr(current, C);
-	return 0;
-}
-*/
 
 typedef struct Phipairs {
 	double phase;
@@ -376,110 +337,6 @@ void printphi(Phipair *p, int interval, int f, const char *filename) {	//makes a
 		}
 	}
 	fclose(fp);
-}
-void unpertsim(double normalperiod, Template spike, int tracedata, const char* tracename) {
-	int i, k, nstep, psteps;
-	double time;
-	double v[N], vout[N], dv[N];			//v = variables (state and current), vout = output variables, dv = derivatives (fstate)
-	double **y, *xx; 						//results variables, y[1..N][1..NSTEP+1], xx[1..NSTEP+1]
-	extern double current[];				//external variable declaration
-	
-	//Variables to do with delay
-	int dsteps = (int)(DELAY / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
-	double buf[dsteps];
-	del = buf;
-	int bufpos;
-	
-	nstep = (int)round((5.0 * normalperiod) / STEPSIZE);
-	psteps = (int)round(normalperiod / STEPSIZE);
-
-	//Allocating memory for the storage arrays, checking if I can, so that I don't run out of memory
-	y = (double**) malloc(sizeof(double*) * (nstep + 1));
-	for (i = 0; i < (nstep + 1); i++) {
-		y[i] = (double*) malloc(sizeof(double) * N);
-		if (y[i] == NULL) {
-			fprintf(stderr, "Ran out of memory for storage array at y[%d]", i);
-			return;
-		}
-	}
-	xx = (double*) malloc(sizeof(double) * (nstep + 1));
-	if (xx == NULL) {
-		fprintf(stderr, "Ran out of memory for storage array xx]");
-		return;
-	}
-	
-	//setting variables to necessary initial values
-	time = 0;
-	prcmode = True;
-	for (i = 0; i < N; ++i) {
-			dv[i] = 0.0;
-			v[i] = 0.0;
-			vout[i] = 0.0;
-			current[i] = 0.0;
-	}
-	
-	copyab(spike.init, v, N);
-	copyab(spike.ibuf, buf, (int)(DELAY / STEPSIZE));
-	bufpos = spike.bufpos;
-	del = &buf[bufpos]; //moves the pointer to the correct initial position in the buffer, unnecessary i believe
-	
-	derivs(time, v, dv, del);	//does running this one effect the phase/ perturbation? I don't think so but I'm not sure.
-	rk4(v, dv, N, time, STEPSIZE, vout, del);
-	
-	xx[0] = time;
-	for (i = 0; i < N; i++) {
-		v[i] = vout[i]; 
-		y[0][i] = v[i];
-	}
-	
-	for (k = 0; k < nstep; k++) {
-		del = &buf[bufpos]; //moves the pointer one step ahead in the buffer
-		derivs(time, v, dv, del);
-		rk4(v, dv, N, time, STEPSIZE, vout, del);
-		*del = vout[0];
-				
-		time += STEPSIZE;
-		xx[k + 1] = time;
-		
-		if (bufpos < dsteps - 1) {	//increments bufpos within the buffer each step
-				bufpos++;
-			}
-		else {
-			bufpos = 0;
-		}
-		
-		for (i = 0; i < N; i++) {
-				v[i] = vout[i];
-				y[k + 1][i] = v[i];
-		}
-	}
-	printf("The trace was unperturbed. psteps = %d (%f ms)\n", psteps, (double)psteps * STEPSIZE);
-	
-	
-	if (tracedata) {
-		char a[(int)strlen(tracename) + (int)strlen("*___.data")];
-		sprintf(a, "%sv.data", tracename);
-		makedata(y, xx, nstep, V, a);
-		sprintf(a, "%sm.data", tracename);	
-		makedata(y, xx, nstep, M, a);
-		sprintf(a, "%sh.data", tracename);
-		makedata(y, xx, nstep, H, a);
-		sprintf(a, "%sn.data", tracename);
-		makedata(y, xx, nstep, NV, a);
-		sprintf(a, "%sl.data", tracename);
-		makedata(y, xx, nstep, MN, a);
-		sprintf(a, "%ss.data", tracename);
-		makedata(y, xx, nstep, S, a);
-		sprintf(a, "%sp.data", tracename);
-		makedata(y, xx, nstep, P, a);
-		sprintf(a, "%sfull.data", tracename);
-		makefull(y, xx, nstep, a);
-	}
-	for (i = 0; i < (nstep + 1); i++) {		
-		free(y[i]);
-	}
-	free(xx);
-	
 }
 
 void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata, const char* tracename) {
@@ -831,6 +688,7 @@ int main() {
 		makedata(y, xx, nstep, M, "m.data");
 		makedata(y, xx, nstep, H, "h.data");
 		makedata(y, xx, nstep, NV, "n.data");
+		//~ makefull(y, xx, nstep, "3delfull.data");
 	}
 	else {
 		printf("\n\nSince PLONG == 0, v-n.data are not being written\n\n");
@@ -866,254 +724,6 @@ int main() {
 	
 	snapshot(y, xx, nstep, V, fthresh, sndthresh, &spike);
 	printemp(&spike);
-	/*
-	int prcsteps;
-	extern int prcmode;
-	double phase;
-	prcsteps = psteps * 5;
-	double targphase;
-	int targstep;
-	int pertpos;
-	int flag;		//perturbation happened
-	double flag1;		//first period complete after perturbation
-	double flag2;		//second period complete after perturbation
-	//~ int flag3;		//third period complete after perturbation, currently unused
-	
-	if (DO_TRACE) {
-		if (!UNPERT) {
-			prcmode = True;
-		}
-		else {
-			prcmode = False;
-			prcsteps = psteps;
-		}
-		Phipair trace;
-		targphase = TPHASE;
-		targstep = (PRCSKIP) ? (psteps * (1 + targphase)) : (psteps * targphase);
-		trace.phase = targphase;
-		flag1 = 0.0;
-		flag2 = 0.0;
-		
-		for (i = 0; i < N; ++i) {
-			dv[i] = 0.0;
-			v[i] = 0.0;
-			vout[i] = 0.0;
-			current[i] = 0.0;
-		}
-		
-		printf("Attempting to use template\n");
-		printemp(&spike);
-		copyab(spike.init, v, N);
-		//~ printdarr(v, N);
-		copyab(spike.ibuf, buf, (int)(DELAY / STEPSIZE));
-		time = 0;
-		bufpos = spike.bufpos;
-		del = &buf[bufpos]; //moves the pointer one step ahead in the buffer
-		pert = spike.volts;
-		pertpos = 0;
-		//~ printf("pert points to %p which holds %f\n", pert, *pert);
-		
-		derivs(time, v, dv, del);	//does running this one effect the phase/ perturbation? I don't think so but I'm not sure.
-	
-		rk4(v, dv, N, time, STEPSIZE, vout, del);
-		
-		xx[0] = time;
-		for (i = 0; i < N; i++) {
-			v[i] = vout[i]; 
-			y[0][i] = v[i];
-		}
-		
-		//~ bufpos = spike.bufpos;
-		for (k = 0; k < prcsteps; k++) {
-			
-			del = &buf[bufpos]; //moves the pointer one step ahead in the buffer
-			derivs(time, v, dv, del);
-			rk4(v, dv, N, time, STEPSIZE, vout, del);
-			*del = vout[0];
-				
-			time += STEPSIZE;
-			xx[k + 1] = time;
-		
-			if (bufpos < dsteps - 1) {	//increments bufpos within the buffer each step
-				bufpos++;
-			}
-			else {
-				bufpos = 0;
-			}
-			if (!UNPERT) {
-				if (k == targstep) {	//activates perturbation mode if on correct step, allows derivs() to start using the "perturbation synapse" (a [pre-recorded stimulus of the same identical neuron)
-					//~ printf("%f\n", time);
-					pertmode = True;
-					flag = True;
-				}
-			}
-			if (pertmode) {
-				if (pertpos < spike.steps - 1) {
-					pertpos++;
-					pert = &spike.volts[pertpos];
-				}
-				else {
-					pertmode = False;
-				}
-			}
-			if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 == 0.0) {
-				
-				if (INTERPOLATE) {
-					flag1 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
-					trace.fphi1 = (PRCSKIP) ? ((((double)(flag1) - (double)(normalperiod)) - (double)(normalperiod)) / (double)(normalperiod)) : ((double)(flag1) - (double)(normalperiod))/ (double)(normalperiod);
-				}
-				else {
-					flag1 = k;
-					trace.fphi1 = (PRCSKIP) ? ((((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps)) : ((double)(k) - (double)(psteps))/ (double)(psteps);
-				}
-				printf("The trace was done at phase %f. The step targeted was %d (time = %f), and the total number of steps in the unperturbed period was %d.\n", TPHASE, targstep, time, psteps);
-				printf("f(phi)1 is %f.\n", trace.fphi1);
-			}
-			else if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 != 0.0 && flag2 == 0.0) {
-				if (INTERPOLATE) {
-					flag2 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
-					trace.fphi2 = (PRCSKIP) ? (((((double)(flag2) - (double)(flag1)) - (double)(normalperiod)) - (double)(flag1)) / (double)(normalperiod)) : ((double)(flag2) - (double)(flag1) - (double)(normalperiod))/ (double)(normalperiod);
-				}
-				else {
-					flag2 = k;
-					trace.fphi2 = ((double)(k) - (double)(flag1))/ (double)(psteps);
-					//~ printf("k %d ptime %f targstep %d prc[prcpos].phase %f time %f prc[prcpos].fphi1 %f flag1 %d flag2 %d prc[prcpos].fphi2 %f\n", k, ptime, targstep, prc[prcpos].phase, time, prc[prcpos].fphi1, flag1, flag2, prc[prcpos].fphi2);
-				}
-			}
-			for (i = 0; i < N; i++) {
-				v[i] = vout[i];
-				y[k + 1][i] = v[i];
-			}
-		}
-		
-		makedata(y, xx, prcsteps, V, "tracev.data");	
-		makedata(y, xx, prcsteps, M, "tracem.data");
-		makedata(y, xx, prcsteps, H, "traceh.data");
-		makedata(y, xx, prcsteps, NV, "tracen.data");
-	}
-	if (DO_PRC) {
-		int j;
-		Phipair prc[INTERVAL + 1];
-		int prcpos = 0;
-		
-		double ptime;
-
-		for (j = 0; j < INTERVAL + 1; ++j) {
-			targphase = ((double)j) * (1.0 / INTERVAL);
-			targstep = (PRCSKIP) ? (psteps * (1 + targphase)) : (psteps * targphase);
-			
-			
-			flag = False;
-			flag1 = 0.0;
-			flag2 = 0.0;
-			//~ flag3 = False;
-			
-			for (i = 0; i < N; ++i) {
-				dv[i] = 0.0;
-				v[i] = 0.0;
-				vout[i] = 0.0;
-				current[i] = 0.0;
-			}
-			
-			//~ printf("Attempting to use template\n");
-			//~ printemp(&spike);
-			copyab(spike.init, v, N);
-			//~ printdarr(v, N);
-			copyab(spike.ibuf, buf, (int)(DELAY / STEPSIZE));
-			time = 0;
-			bufpos = spike.bufpos;
-			del = &buf[bufpos]; //moves the pointer one step ahead in the buffer
-			
-			pert = spike.volts;
-			pertpos = 0;
-			//~ printf("Phase %f Step %d\n", targphase, targstep);
-			
-			derivs(time, v, dv, del);	//does running this one effect the phase/ perturbation? I don't think so but I'm not sure.
-	
-			rk4(v, dv, N, time, STEPSIZE, vout, del);
-			
-			xx[0] = time;
-			for (i = 0; i < N; i++) {
-				v[i] = vout[i]; 
-				y[0][i] = v[i];
-			}
-
-			for (k = 0; k < prcsteps; k++) {
-				
-				del = &buf[bufpos]; //moves the pointer one step ahead in the buffer
-				derivs(time, v, dv, del);
-				rk4(v, dv, N, time, STEPSIZE, vout, del);
-				*del = vout[0];
-					
-				time += STEPSIZE;
-				xx[k + 1] = time;
-			
-				if (bufpos < dsteps - 1) {	//increments bufpos within the buffer each step
-					bufpos++;
-				}
-				else {
-					bufpos = 0;
-				}
-				
-				if (k == targstep) {
-					pertmode = True;
-					flag = True;
-					ptime = time;
-				}
-				if (pertmode) {
-					if (pertpos < spike.steps - 1) {
-						pertpos++;
-						pert = &spike.volts[pertpos];
-					}
-					else {
-						pertmode = False;
-					}
-				}
-				if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 == 0.0) {
-					
-					//~ if (INTERPOLATE) {
-						//~ flag1 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
-						//~ trace.fphi1 = (PRCSKIP) ? ((((double)(flag1) - (double)(normalperiod)) - (double)(normalperiod)) / (double)(normalperiod)) : ((double)(flag1) - (double)(normalperiod))/ (double)(normalperiod);
-					//~ }
-					
-					if (INTERPOLATE) {
-						flag1 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
-						prc[prcpos].fphi1 = (PRCSKIP) ? ((((double)(flag1) - (double)(normalperiod)) - (double)(normalperiod)) / (double)(normalperiod)) : ((double)(flag1) - (double)(normalperiod)) / (double)(normalperiod);
-						prc[prcpos].phase = targphase;
-						//~ printf("prc[prcpos].fphi1 %f\n\n", prc[prcpos].fphi1);
-					}
-					else {
-						flag1 = k;
-						prc[prcpos].fphi1 = (PRCSKIP) ? ((((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps)) : ((double)(k) - (double)(psteps))/ (double)(psteps);
-						prc[prcpos].phase = targphase;
-						//~ ((double)targstep - (double)psteps) / (k - psteps);
-					}
-					//~ prcpos++;
-				}
-				else if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 != 0.0 && flag2 == 0.0) {
-					if (INTERPOLATE) {
-						flag2 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
-						prc[prcpos].fphi2 = ((double)(flag2) - (double)(flag1) - (double)(normalperiod)) / (double)(normalperiod);
-						printf("k %d prcpos %d ptime %f targstep %d prc[prcpos].phase %f time %f prc[prcpos].fphi1 %f flag1 %f flag2 %f prc[prcpos].fphi2 %f\n", k, prcpos, ptime, targstep, prc[prcpos].phase, time, prc[prcpos].fphi1, flag1, flag2, prc[prcpos].fphi2);
-						prcpos++;
-					}
-					else {
-						flag2 = k;
-						prc[prcpos].fphi2 = ((double)(k) - (double)(flag1))/ (double)(psteps);
-						printf("k %d prcpos %d ptime %f targstep %d prc[prcpos].phase %f time %f prc[prcpos].fphi1 %f flag1 %f flag2 %f prc[prcpos].fphi2 %f\n", k, prcpos, ptime, targstep, prc[prcpos].phase, time, prc[prcpos].fphi1, flag1, flag2, prc[prcpos].fphi2);
-						prcpos++;
-					}
-				}
-				for (i = 0; i < N; i++) {
-					v[i] = vout[i];
-					y[k + 1][i] = v[i];
-				}
-			}
-		}
-		printphi(prc, INTERVAL, 1, "prc1.data");
-		printphi(prc, INTERVAL, 2, "prc2.data");
-	}
-	*/
 	
 	if (DO_PRC) {
 		prc(spike, INTERVAL, normalperiod);
