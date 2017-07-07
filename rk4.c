@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define NN 2
+#define NN 20
 #define N 7
 #define C 5
 #define I_NA 0  
