@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define NN 2
+#define NN 20
 #define N 7
 #define C 5
 #define I_NA 0  
@@ -42,8 +42,8 @@
 #define I_APP_END 501
 #define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
 #define USE_HIGHPROPOFOL 0
-#define PROPOFOL_START 300
-#define PROPOFOL_END 100000
+#define PROPOFOL_START 300.0
+#define PROPOFOL_END 100000.0
 #define LOWPROP_GSYN 0.25
 #define LOWPROP_TAU 10
 #define HIGHPROP_GSYN 0.5
@@ -51,7 +51,7 @@
 #define STARTTIME 0
 #define ENDTIME 4700
 #define STEPSIZE 0.01
-#define DELAY 6.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
+#define DELAY 9.0			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 5 		//number of spikes that are averaged together to give unperturbed period
@@ -66,6 +66,7 @@
 #define False 0
 #define INTERPOLATE 1
 #define PLONG 1
+#define FULLNAME "lowallrand9del.data"
 //~ #define SELF 0
 
 double current[C];	//external current variable, similar to how Canavier did it
@@ -241,7 +242,7 @@ void dump_(double Y[]) {
 	for (j = 0; j < NN; ++j) {
 		for (i = 0; i < (N); ++i) {
 			fprintf(sp, "%g\n", Y[pos]);
-			fprintf(stderr, "%g\n", Y[pos]);
+			//~ fprintf(stderr, "%g\n", Y[pos]);
 			++pos;
 		}
 	}	
@@ -309,6 +310,20 @@ void makefull(double** y, double *xx, int nstep, const char *filename) {	//makes
 			fprintf(fp, "%f ", y[i][j]);
 		}
 		fprintf(fp, "%f\n", y[i][(N * NN) - 1]);
+	}
+	fclose(fp);
+}
+
+void makeallvolts(double** y, double *xx, int nstep, const char *filename) {
+	int i, j;
+	FILE *fopen(),*fp;
+	fp = fopen(filename, "w");
+	for (i = 0; i < nstep + 1; i++) {
+		fprintf(fp, "%f ", xx[i]);
+		for (j = 0; j < NN - 1; j++) {
+			fprintf(fp, "%f ", y[i][V + (j * N)]);
+		}
+		fprintf(fp, "%f\n", y[i][V + (N * (NN - 1))]);
 	}
 	fclose(fp);
 }
@@ -632,8 +647,17 @@ int main() {
 			//~ weight[i][i] = 0.;
 		//~ }
 	//~ }
-	
-	fprintf(stderr, "test1\n");
+	fprintf(stderr, "DELAY = %fms.\n", DELAY);
+	if (USE_LOWPROPOFOL) {
+		fprintf(stderr, "Using Low Dose Propofol starting at time %f and ending at %f.\n", PROPOFOL_START, PROPOFOL_END);
+	}
+	if (USE_HIGHPROPOFOL) {
+		fprintf(stderr, "Using High Dose Propofol starting at time %f and ending at %f.\n", PROPOFOL_START, PROPOFOL_END);
+	}
+	fprintf(stderr, "Printing data to file ");
+	fprintf(stderr, FULLNAME);
+	fprintf(stderr, "\n");
+	//~ fprintf(stderr, "test1\n");
 	//Variables to do with delay
 	int dsteps = (int)(DELAY / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
 	double* buf[dsteps];
@@ -659,7 +683,7 @@ int main() {
 	Template spike;
 
 	int startstep;
-	fprintf(stderr, "test2\n");
+	//~ fprintf(stderr, "test2\n");
 	
 	//Allocating memory for the storage arrays, checking if I can, so that I don't run out of memory
 	y = (double**) malloc(sizeof(double*) * (nstep + 1));
@@ -682,21 +706,23 @@ int main() {
 	
 	time = STARTTIME;
 	scan_(v, N*NN, "state.data");				//scanning in initial variables (state variables only) 
-	fprintf(stderr, "test3\n");
-	printdarr(v, (N * NN));
-	for (i = 0; i < (dsteps); ++i) {//sets every double in buffer(s) to be equal to the steady state (initial) voltage that was just scanned in
-		for (j = 0; j < NN; ++j) {
-			if (DELAY >= STEPSIZE) { 
-				buf[i][j] = 2 * (1 + tanh(v[V + (N * j)] / 4.0));
-			}
-			else {
-				buf[i][j] = v[V + (N * j)];
+	//~ fprintf(stderr, "test3\n");
+	//~ printdarr(v, (N * NN));
+	if (DELAY >= STEPSIZE) {
+		for (i = 0; i < (dsteps); ++i) {//sets every double in buffer(s) to be equal to the steady state (initial) voltage that was just scanned in
+			for (j = 0; j < NN; ++j) {
+				//~ if (DELAY >= STEPSIZE) { 
+					buf[i][j] = 2 * (1 + tanh(v[V + (N * j)] / 4.0));
+				//~ }
+				//~ else {
+					//~ buf[i][j] = v[V + (N * j)];
+				//~ }
 			}
 		}
 	}
-	fprintf(stderr, "test4\n");
+	//~ fprintf(stderr, "test4\n");
 	derivs(time, v, dv, del, weight);
-	printdarr(dv, (N * NN));
+	//~ printdarr(dv, (N * NN));
 	rk4(v, dv, (N * NN), time, STEPSIZE, vout, del, weight);
 	
 	
@@ -706,8 +732,8 @@ int main() {
 		y[0][i] = v[i];
 		
 	}
-	fprintf(stderr, "test5\n");
-	printdarr(v, (N * NN));
+	//~ fprintf(stderr, "test5\n");
+	//~ printdarr(v, (N * NN));
 	for (k = 0; k < nstep; k++) {
 		
 		if (USE_LOWPROPOFOL) {	//changes gsyn to match the correct level of propofol in the simulation
@@ -732,8 +758,10 @@ int main() {
 		rk4(v, dv, (N * NN), time, STEPSIZE, vout, del, weight);		//actually dose the step
 		//~ printdarr(v, (N * NN));
 		//~ fprintf(stderr, "test5c k = %d\n", k);
-		for (j = 0; j < NN; ++j) {								//IMPORTANT: this calculates the f(vj) outside of derivs and places that into the buffer, preventing a large waste of computational time
-			del[j] = 2 * (1 + tanh(vout[V + (N * j)] / 4.0));		//dereferences the delay pointer, and puts the previous f(vj) in the same spot
+		if (DELAY >= STEPSIZE) {
+			for (j = 0; j < NN; ++j) {								//IMPORTANT: this calculates the f(vj) outside of derivs and places that into the buffer, preventing a large waste of computational time
+				del[j] = 2 * (1 + tanh(vout[V + (N * j)] / 4.0));		//dereferences the delay pointer, and puts the previous f(vj) in the same spot
+			}
 		}
 		/*
 		if (DO_TRACE || DO_PRC) {
@@ -798,7 +826,7 @@ int main() {
 		
 		}		
 		*/
-		
+		//~ fprintf(stderr, "test5d k = %d\n", k);
 		time += STEPSIZE;
 		xx[k + 1] = time;
 		
@@ -818,22 +846,42 @@ int main() {
 			y[k + 1][i] = v[i];
 		}
 	}
-	fprintf(stderr, "test6\n");
+	//~ fprintf(stderr, "test6\n");
 	if (PLONG) {
 		makedata(y, xx, nstep, V, "v.data");
 		makedata(y, xx, nstep, (V + N), "v2.data");
 		makedata(y, xx, nstep, M, "m.data");
 		makedata(y, xx, nstep, H, "h.data");
 		makedata(y, xx, nstep, NV, "n.data");
-		makefull(y, xx, nstep, "full.data");
-		makefullsingle(y, xx, nstep, 0, "0full.data");
-		makefullsingle(y, xx, nstep, 1, "1full.data");
+		makeallvolts(y, xx, nstep, FULLNAME);
+		//~ makefull(y, xx, nstep, "full.data");
+		
+		//~ makefullsingle(y, xx, nstep, 0, "0full.data");
+		//~ makefullsingle(y, xx, nstep, 1, "1full.data");
+		//~ makefullsingle(y, xx, nstep, 2, "2full.data");
+		//~ makefullsingle(y, xx, nstep, 3, "3full.data");
+		//~ makefullsingle(y, xx, nstep, 4, "4full.data");
+		//~ makefullsingle(y, xx, nstep, 5, "5full.data");
+		//~ makefullsingle(y, xx, nstep, 6, "6full.data");
+		//~ makefullsingle(y, xx, nstep, 7, "7full.data");
+		//~ makefullsingle(y, xx, nstep, 8, "8full.data");
+		//~ makefullsingle(y, xx, nstep, 9, "9full.data");
+		//~ makefullsingle(y, xx, nstep, 10, "10full.data");
+		//~ makefullsingle(y, xx, nstep, 11, "11full.data");
+		//~ makefullsingle(y, xx, nstep, 12, "12full.data");
+		//~ makefullsingle(y, xx, nstep, 13, "13full.data");
+		//~ makefullsingle(y, xx, nstep, 14, "14full.data");
+		//~ makefullsingle(y, xx, nstep, 15, "15full.data");
+		//~ makefullsingle(y, xx, nstep, 16, "16full.data");
+		//~ makefullsingle(y, xx, nstep, 17, "17full.data");
+		//~ makefullsingle(y, xx, nstep, 18, "18full.data");
+		//~ makefullsingle(y, xx, nstep, 19, "19full.data");
 	}
 	else {
 		printf("\n\nSince PLONG == 0, v-n.data are not being written\n\n");
 	}
-	fprintf(stderr, "test7\n");
-	printdarr(vout, (N * NN));
+	//~ fprintf(stderr, "test7\n");
+	//~ printdarr(vout, (N * NN));
 	dump_(vout);
 /*	
 	if (DO_TRACE || DO_PRC) {
