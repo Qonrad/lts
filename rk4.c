@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define NN 20
+#define NN 2
 #define N 7
 #define C 5
 #define I_NA 0  
@@ -171,6 +171,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		}
 		else {
 			//???????????vvvvvvv
+			//~ current[I_S] =  gsyn * ((y[S + (N * i)] * (MYCLUSTER - 1))+ (y[P + (N * i)] * (POPULATION - MYCLUSTER))) * (y[V + (N * i)] - E_SYN);
 			current[I_S] = gsyn * y[S + (N * i)] * (y[V + (N * i)] - E_SYN);
 		}
 		
@@ -737,7 +738,7 @@ int main() {
 	for (k = 0; k < nstep; k++) {
 		
 		if (USE_LOWPROPOFOL) {	//changes gsyn to match the correct level of propofol in the simulation
-			gsyn = (time > PROPOFOL_START || time < PROPOFOL_END || prcmode) ? LOWPROP_GSYN : G_SYN;
+			gsyn = (time > PROPOFOL_START || time < PROPOFOL_END || prcmode) ? LOWPROP_GSYN: G_SYN; 
 			tau = (time > PROPOFOL_START || time < PROPOFOL_END || prcmode) ? LOWPROP_TAU : TAUSYN; 
 		}
 		else if (USE_HIGHPROPOFOL) {
