@@ -68,7 +68,7 @@
 #define PLONG 1
 #define FULLNAME "highallrand0del.data"
 //~ #define SELF 0
-
+//meaningless comment
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
 static int prcmode;
