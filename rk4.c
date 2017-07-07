@@ -40,8 +40,8 @@
 #define USE_I_APP 1			//really should be called "USE_IAPP_STEP"
 #define I_APP_START 500
 #define I_APP_END 501
-#define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
-#define USE_HIGHPROPOFOL 0
+#define USE_LOWPROPOFOL 0	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
+#define USE_HIGHPROPOFOL 1
 #define PROPOFOL_START 300.0
 #define PROPOFOL_END 100000.0
 #define LOWPROP_GSYN 0.25
@@ -51,10 +51,10 @@
 #define STARTTIME 0
 #define ENDTIME 4700
 #define STEPSIZE 0.01
-#define DELAY 9.0			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
+#define DELAY 0.0			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
-#define SAMPLESIZE 5 		//number of spikes that are averaged together to give unperturbed period
+#define SAMPLESIZE 20 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 20			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population
 #define MYCLUSTER 10		//number of neurons in the simulated neuron's population
@@ -66,7 +66,7 @@
 #define False 0
 #define INTERPOLATE 1
 #define PLONG 1
-#define FULLNAME "lowallrand9del.data"
+#define FULLNAME "highallrand0del.data"
 //~ #define SELF 0
 
 double current[C];	//external current variable, similar to how Canavier did it
@@ -763,6 +763,19 @@ int main() {
 				del[j] = 2 * (1 + tanh(vout[V + (N * j)] / 4.0));		//dereferences the delay pointer, and puts the previous f(vj) in the same spot
 			}
 		}
+		if (vout[0] >= THRESHOLD && v[0] < THRESHOLD) {
+			if (spikecount < (SAMPLESIZE + OFFSET)) {
+				if (INTERPOLATE) {
+					sptimes[spikecount] = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+					//~ vout[0] = -50.0; //fudging the interpolated value to the most recent v[0] value so that it exactly matches the spike template
+					//~ printf("sptimes[spikecount] with interpolation is %f. Without is %f. The difference is %f.\n", sptimes[spikecount], time, (sptimes[spikecount] - time));
+				}
+				else {
+					sptimes[spikecount] = time;
+				}
+			}
+			++spikecount;			//incremented at the end so it can be used as position in sptimes			
+		}
 		/*
 		if (DO_TRACE || DO_PRC) {
 			if (vout[0] >= THRESHOLD && v[0] < THRESHOLD) {
@@ -845,6 +858,26 @@ int main() {
 			v[i] = vout[i];
 			y[k + 1][i] = v[i];
 		}
+	}
+	printf("This simulation counted %d spikes of Neuron[0].\n", spikecount);
+	if (spikecount >= (SAMPLESIZE + OFFSET)) {
+		for (i = OFFSET; i < SAMPLESIZE + OFFSET - 1; ++i) {		//calculates differences between spike times to find each period
+			sumdiffs += sptimes[i + 1] - sptimes[i];
+			spdiffs[i - OFFSET] = sptimes[i + 1] - sptimes[i];
+		}
+		//~ printdarr(spdiffs, SAMPLESIZE - 1);
+		printperiod(spdiffs, SAMPLESIZE - 1, "period.data");
+		normalperiod = sumdiffs / (SAMPLESIZE - 1);
+		psteps = (int)round(normalperiod / STEPSIZE);
+		periodsd = calculateSD(spdiffs, SAMPLESIZE - 1);
+		printf("The average unperturbed period is %f, which is approximately %d steps.\n", normalperiod, psteps);
+		printf("The standard deviation is %f.\n", periodsd);
+	}
+	else {
+		printf("There are not enough spikes to account for sample size and offset or something else has gone wrong.\n");
+		printf("Killing because it hasn't passed the test of spikecount >= (SAMPLESIZE + OFFSET).\n");
+		printf("v.data-n.data as well as end.data were still written, but no trace or prc processes occured.\n");
+		return 0;
 	}
 	//~ fprintf(stderr, "test6\n");
 	if (PLONG) {
