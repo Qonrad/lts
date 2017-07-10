@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define NN 2
+#define NN 20
 #define N 7
 #define C 5
 #define I_NA 0  
@@ -66,7 +66,7 @@
 #define False 0
 #define INTERPOLATE 1
 #define PLONG 1
-#define FULLNAME "2neur.data"
+#define FULLNAME "high20del0.data"
 //~ #define SELF 0
 //meaningless comment
 double current[C];	//external current variable, similar to how Canavier did it
@@ -860,6 +860,7 @@ int main() {
 			y[k + 1][i] = v[i];
 		}
 	}
+	printdarr(v, N * NN);
 	printf("This simulation counted %d spikes of Neuron[0].\n", spikecount);
 	if (spikecount >= (SAMPLESIZE + OFFSET)) {
 		for (i = OFFSET; i < SAMPLESIZE + OFFSET - 1; ++i) {		//calculates differences between spike times to find each period
@@ -891,7 +892,7 @@ int main() {
 		//~ makefull(y, xx, nstep, "full.data");
 		
 		//~ makefullsingle(y, xx, nstep, 0, "0full.data");
-		makefullsingle(y, xx, nstep, 1, "1full.data");
+		//~ makefullsingle(y, xx, nstep, 1, "1full.data");
 		//~ makefullsingle(y, xx, nstep, 2, "2full.data");
 		//~ makefullsingle(y, xx, nstep, 3, "3full.data");
 		//~ makefullsingle(y, xx, nstep, 4, "4full.data");
@@ -908,7 +909,7 @@ int main() {
 		//~ makefullsingle(y, xx, nstep, 15, "15full.data");
 		//~ makefullsingle(y, xx, nstep, 16, "16full.data");
 		//~ makefullsingle(y, xx, nstep, 17, "17full.data");
-		//~ makefullsingle(y, xx, nstep, 18, "18full.data");
+		makefullsingle(y, xx, nstep, 18, "18full.data");
 		//~ makefullsingle(y, xx, nstep, 19, "19full.data");
 	}
 	else {
