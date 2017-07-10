@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define NN 20
+#define NN 2
 #define N 7
 #define C 5
 #define I_NA 0  
@@ -54,8 +54,8 @@
 #define DELAY 0.0			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
-#define SAMPLESIZE 20 		//number of spikes that are averaged together to give unperturbed period
-#define OFFSET 20			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
+#define SAMPLESIZE 15 		//number of spikes that are averaged together to give unperturbed period
+#define OFFSET 10			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population
 #define MYCLUSTER 10		//number of neurons in the simulated neuron's population
 #define DO_PRC 0			//toggle for prc
@@ -66,7 +66,7 @@
 #define False 0
 #define INTERPOLATE 1
 #define PLONG 1
-#define FULLNAME "20chain0del.data"
+#define FULLNAME "2neur.data"
 //~ #define SELF 0
 //meaningless comment
 double current[C];	//external current variable, similar to how Canavier did it
@@ -891,7 +891,7 @@ int main() {
 		//~ makefull(y, xx, nstep, "full.data");
 		
 		//~ makefullsingle(y, xx, nstep, 0, "0full.data");
-		//~ makefullsingle(y, xx, nstep, 1, "1full.data");
+		makefullsingle(y, xx, nstep, 1, "1full.data");
 		//~ makefullsingle(y, xx, nstep, 2, "2full.data");
 		//~ makefullsingle(y, xx, nstep, 3, "3full.data");
 		//~ makefullsingle(y, xx, nstep, 4, "4full.data");
@@ -909,7 +909,7 @@ int main() {
 		//~ makefullsingle(y, xx, nstep, 16, "16full.data");
 		//~ makefullsingle(y, xx, nstep, 17, "17full.data");
 		//~ makefullsingle(y, xx, nstep, 18, "18full.data");
-		makefullsingle(y, xx, nstep, 19, "19full.data");
+		//~ makefullsingle(y, xx, nstep, 19, "19full.data");
 	}
 	else {
 		printf("\n\nSince PLONG == 0, v-n.data are not being written\n\n");
