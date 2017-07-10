@@ -66,7 +66,7 @@
 #define False 0
 #define INTERPOLATE 1
 #define PLONG 1
-#define FULLNAME "highallrand0del.data"
+#define FULLNAME "20chain0del.data"
 //~ #define SELF 0
 //meaningless comment
 double current[C];	//external current variable, similar to how Canavier did it
@@ -909,7 +909,7 @@ int main() {
 		//~ makefullsingle(y, xx, nstep, 16, "16full.data");
 		//~ makefullsingle(y, xx, nstep, 17, "17full.data");
 		//~ makefullsingle(y, xx, nstep, 18, "18full.data");
-		//~ makefullsingle(y, xx, nstep, 19, "19full.data");
+		makefullsingle(y, xx, nstep, 19, "19full.data");
 	}
 	else {
 		printf("\n\nSince PLONG == 0, v-n.data are not being written\n\n");

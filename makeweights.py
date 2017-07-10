@@ -4,7 +4,7 @@ import random
 randomize = False
 self = False
 allon = False
-alloff = False
+alloff = True
 
 f = open(sys.argv[2], 'w')
 
@@ -24,16 +24,20 @@ if randomize:
 		else:
 			f.write('0.\n')
 else:
-	for i in range(int(sys.argv[1])):
-		for j in range(int(sys.argv[1]) - 1):
-			if ((not self) and i == j):
-				f.write('0. ')
+	if allon:
+		for i in range(int(sys.argv[1])):
+			for j in range(int(sys.argv[1]) - 1):
+				if ((not self) and i == j):
+					f.write('0. ')
+				else:
+					f.write('1. ')			
+			if ((not self) and i == (int(sys.argv[1]) - 1)):
+				f.write('0.\n')
 			else:
-				f.write('1. ')
-				
-		if ((not self) and i == (int(sys.argv[1]) - 1)):
+				f.write('1.\n')
+	elif alloff:
+		for i in range(int(sys.argv[1])):
+			for j in range(int(sys.argv[1]) - 1):
+					f.write('0. ')
 			f.write('0.\n')
-		else:
-			f.write('1.\n')
-
 f.close()
