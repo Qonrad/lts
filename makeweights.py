@@ -3,8 +3,8 @@ import random
 
 randomize = False
 self = False
-allon = False
-alloff = True
+allon = True
+alloff = False
 
 f = open(sys.argv[2], 'w')
 

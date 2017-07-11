@@ -49,12 +49,12 @@
 #define HIGHPROP_GSYN 0.5
 #define HIGHPROP_TAU 20
 #define STARTTIME 0
-#define ENDTIME 4700
+#define ENDTIME 10000
 #define STEPSIZE 0.01
 #define DELAY 0.0			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
-#define SAMPLESIZE 15 		//number of spikes that are averaged together to give unperturbed period
+#define SAMPLESIZE 32 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 10			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population
 #define MYCLUSTER 10		//number of neurons in the simulated neuron's population
@@ -67,6 +67,8 @@
 #define INTERPOLATE 1
 #define PLONG 1
 #define FULLNAME "high20del0.data"
+#define USE_MULTIPLIERS	0
+
 //~ #define SELF 0
 //meaningless comment
 double current[C];	//external current variable, similar to how Canavier did it
@@ -134,9 +136,9 @@ void printdarr(double *a, int numelems) {
 	int i;
 	printf("[");
 	for (i = 0; i < numelems - 1; ++i) {
-		printf("%f (%p), ", a[i], &a[i]);
+		fprintf(stderr, "%f (%p), ", a[i], &a[i]);
 	}
-	printf("%f (%p)]\n", a[numelems - 1], &a[numelems - 1]);
+	fprintf(stderr, "%f (%p)]\n", a[numelems - 1], &a[numelems - 1]);
 }
 
 inline double f(double v, double a, double th, double q) {
@@ -166,12 +168,11 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		current[I_K] =  G_K * pow(y[NV + (N * i)], 4.0) * (y[V + (N * i)] - E_K);
 		current[I_M] =  G_M * y[MN + (N * i)] * (y[V + (N * i)] - E_K);
 		current[I_L] =  G_L * (y[V + (N * i)] - E_L);
-		if (NN == 1) {
+		//???????????vvvvvvv
+		if (USE_MULTIPLIERS) {
 			current[I_S] =  gsyn * ((y[S + (N * i)] * (MYCLUSTER - 1))+ (y[P + (N * i)] * (POPULATION - MYCLUSTER))) * (y[V + (N * i)] - E_SYN);
 		}
 		else {
-			//???????????vvvvvvv
-			//~ current[I_S] =  gsyn * ((y[S + (N * i)] * (MYCLUSTER - 1))+ (y[P + (N * i)] * (POPULATION - MYCLUSTER))) * (y[V + (N * i)] - E_SYN);
 			current[I_S] = gsyn * y[S + (N * i)] * (y[V + (N * i)] - E_SYN);
 		}
 		
@@ -190,19 +191,25 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		if (DELAY >= STEPSIZE) {
 			//newest edit: *oldv should be the 2 * tanh() function of the previous voltage, moved outside of the driver to prevent waste of computational resources
 			for (j = 0; j < NN; ++j) {
-					synsum += oldv[j] * weight[i*NN+j];
+					synsum += oldv[j] * (1 - y[S + (N * i)]) * weight[i*NN+j];
 			}
 
 			//?????????????????vvvvvvv
-			dydx[S + (N * i)] = (synsum * (1 - y[S + (N * i)])) - (y[S + (N * i)] / tau); //uses *oldv which should be del, the delay pointer in the buffer
+			dydx[S + (N * i)] = (synsum - (y[S + (N * i)] / tau)); //uses *oldv which should be del, the delay pointer in the buffer
 			//~ dydx[S + (N * i)] = 2 * (1 + tanh(*oldv / 4.0)) * (1 - y[S + (N * i)]) - y[S + (N * i)] / tau; //uses *oldv which should be del, the delay pointer in the buffer
 			//~ printf("I exist at time %f.\n", time);
 		}
 		else {
 			for (j = 0; j < NN; ++j) {
-					synsum += (2 * (1 + tanh(y[V + (N * j)] / 4.0))) * weight[i*NN+j];
+					synsum += (2 * (1 + tanh(y[V + (j * N)] / 4.0))) * weight[j + (i * NN)];
+					if (synsum >= 80.) {
+						fprintf(stderr, "synsum = %f time = %f y[V + (j * N)] = %f i(postsynaptic neuron) = %d j(presynaptic neuron) = %d weight[j + (i * NN)] = %f\n", synsum, time, y[V + (j * N)], i, j, weight[j + (i * NN)]);
+					}
 			}
-			dydx[S + (N * i)] = synsum * (1 - y[S + (N * i)]) - y[S + (N * i)] / tau;
+			dydx[S + (N * i)] = synsum * (NN - 1 - y[S + (N * i)])- y[S + (N * i)] / tau;
+			if (synsum >= 1) {
+					//~ fprintf(stderr, "time = %g synsum = %g\n", time, synsum);
+			}
 			//~ dydx[S + (N * i)] = 2 * (1 + tanh(y[V + (N * i)] / 4.0)) * (1 - y[S + (N * i)]) - y[S + (N * i)] / tau;
 		}
 		if (NN == 1) {
@@ -639,6 +646,8 @@ int main() {
 	extern double current[];				//external variable declaration
 	double weight[NN*NN];
 	scan_(weight, NN*NN, "weights.data");
+	fprintf(stderr, "weights.data\n");
+	//~ printdarr(weight, NN * NN);
 	//~ for (i = 0; i < NN; i++) {
 		 //~ weight[i] = (double*) malloc(sizeof(double) * NN);
 		//~ for (pre = 0; pre < NN; ++pre) {
@@ -861,7 +870,7 @@ int main() {
 		}
 	}
 	printdarr(v, N * NN);
-	printf("This simulation counted %d spikes of Neuron[0].\n", spikecount);
+	fprintf(stderr,"This simulation counted %d spikes of Neuron[0].\n", spikecount);
 	if (spikecount >= (SAMPLESIZE + OFFSET)) {
 		for (i = OFFSET; i < SAMPLESIZE + OFFSET - 1; ++i) {		//calculates differences between spike times to find each period
 			sumdiffs += sptimes[i + 1] - sptimes[i];
@@ -872,13 +881,13 @@ int main() {
 		normalperiod = sumdiffs / (SAMPLESIZE - 1);
 		psteps = (int)round(normalperiod / STEPSIZE);
 		periodsd = calculateSD(spdiffs, SAMPLESIZE - 1);
-		printf("The average unperturbed period is %f, which is approximately %d steps.\n", normalperiod, psteps);
-		printf("The standard deviation is %f.\n", periodsd);
+		fprintf(stderr, "The average unperturbed period is %f, which is approximately %d steps.\n", normalperiod, psteps);
+		fprintf(stderr, "The standard deviation is %f.\n", periodsd);
 	}
 	else {
-		printf("There are not enough spikes to account for sample size and offset or something else has gone wrong.\n");
-		printf("Killing because it hasn't passed the test of spikecount >= (SAMPLESIZE + OFFSET).\n");
-		printf("v.data-n.data as well as end.data were still written, but no trace or prc processes occured.\n");
+		fprintf(stderr, "There are not enough spikes to account for sample size and offset or something else has gone wrong.\n");
+		fprintf(stderr, "Killing because it hasn't passed the test of spikecount >= (SAMPLESIZE + OFFSET).\n");
+		fprintf(stderr, "v.data-n.data as well as end.data were still written, but no trace or prc processes occured.\n");
 		return 0;
 	}
 	//~ fprintf(stderr, "test6\n");
@@ -888,6 +897,7 @@ int main() {
 		makedata(y, xx, nstep, M, "m.data");
 		makedata(y, xx, nstep, H, "h.data");
 		makedata(y, xx, nstep, NV, "n.data");
+		makedata(y, xx, nstep, S, "s.data");
 		makeallvolts(y, xx, nstep, FULLNAME);
 		//~ makefull(y, xx, nstep, "full.data");
 		
