@@ -39,8 +39,8 @@
 #define USE_I_APP 1
 #define I_APP_START 500
 #define I_APP_END 501
-#define USE_LOWPROPOFOL 0	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
-#define USE_HIGHPROPOFOL 1
+#define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
+#define USE_HIGHPROPOFOL 0
 #define PROPOFOL_START 300
 #define PROPOFOL_END 100000
 #define LOWPROP_GSYN 0.25
@@ -56,8 +56,8 @@
 #define SAMPLESIZE 5 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 20			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population, should be 20 for accurate representation of mccarthy
-#define MYCLUSTER 10			//number of neurons in the simulated neuron's population, should be 10 for accurate representation of mccarthy
-#define DO_PRC 0			//toggle for prc
+#define MYCLUSTER 19			//number of neurons in the simulated neuron's population, should be 10 for accurate representation of mccarthy
+#define DO_PRC 1			//toggle for prc
 #define DO_TRACE 0			//toggles doing trace for a single (or multiple phase perturbations) but each is recorded individually
 #define TPHASE 0.985
 #define INTERVAL 100			//number of intervals prc analysis will be done on
