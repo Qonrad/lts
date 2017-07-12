@@ -37,7 +37,7 @@
 #define G_L   0.1
 #define G_SYN  0.165		//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
 #define TAUSYN 10			//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
-#define USE_I_APP 1			//really should be called "USE_IAPP_STEP"
+#define USE_I_APP 0			//really should be called "USE_IAPP_STEP"
 #define I_APP_START 500
 #define I_APP_END 501
 #define USE_LOWPROPOFOL 0	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
