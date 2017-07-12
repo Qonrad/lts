@@ -40,8 +40,8 @@
 #define USE_I_APP 0			//really should be called "USE_IAPP_STEP"
 #define I_APP_START 500
 #define I_APP_END 501
-#define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
-#define USE_HIGHPROPOFOL 0
+#define USE_LOWPROPOFOL 0	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
+#define USE_HIGHPROPOFOL 1
 #define PROPOFOL_START 1.0
 #define PROPOFOL_END 100000.0
 #define LOWPROP_GSYN 0.25
@@ -51,10 +51,10 @@
 #define STARTTIME 0
 #define ENDTIME 4700
 #define STEPSIZE 0.01
-#define DELAY 6.0			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
+#define DELAY 0.0			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
-#define SAMPLESIZE 20 		//number of spikes that are averaged together to give unperturbed period
+#define SAMPLESIZE 5 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 10			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population
 #define MYCLUSTER 10		//number of neurons in the simulated neuron's population
@@ -68,9 +68,6 @@
 
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
-static int prcmode;
-static int pertmode;
-double *pert;
 double gsyn, tau;
 /*
 int deriv_(double *xp, double *Y, double *F) {
@@ -112,24 +109,10 @@ int deriv_(double *xp, double *Y, double *F) {
 }
 */
 
-typedef struct Phipairs {
-	double phase;
-	double fphi1;
-	double fphi2;
-} Phipair;
-
-typedef struct Templates {
-	int steps;
-	double *volts;
-	double init[N * NN];
-	double ibuf[(int)(DELAY / STEPSIZE)];
-	int bufpos;
-} Template;
-
 // Conrad code to print an array for debugging
 void printdarr(double *a, int numelems) {
 	int i;
-	printf("[");
+	fprintf(stderr, "[");
 	for (i = 0; i < numelems - 1; ++i) {
 		fprintf(stderr, "%f (%p), ", a[i], &a[i]);
 	}
@@ -145,10 +128,9 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 	double *pert;
 	int i, j;
 
-	//~ gsyn *=  weight[i][pre];
 	for (i = 0; i < NN; i++) {
 		
-		if (i <= 2 && USE_I_APP && !(prcmode)) {
+		if (i <= 2 && USE_I_APP) {
 			iapp = (time < I_APP_START || time > I_APP_END) ? I_APP : I_APP_STEP;	
 		}
 	
@@ -162,7 +144,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		current[I_M] =  G_M * y[MN + (N * i)] * (y[V + (N * i)] - E_K);
 		current[I_L] =  G_L * (y[V + (N * i)] - E_L);
 		
-		//Ruben's crazy idea
+		//Ruben's crazy idea, seems to work!
 		current[I_S] = 0.0;
 		if (DELAY >= STEPSIZE) {
 			for (j = 0; j < NN; ++j) {
@@ -174,7 +156,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 			}
 		//	printf("time = %f i = %d sum = %f\n", time, i, current[I_S]);
 		}		
-		y[P + (N * i)] = current[I_S] ;
+		y[P + (N * i)] = current[I_S] ;	//sets perturbation state variable to synaptic current, doesn't affect simulation, purely for debugging purposes
 		
 		current[I_S] *= gsyn * (y[V + (N * i)] - E_SYN);
 		
@@ -198,7 +180,6 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		
 		dydx[S + (N * i)] = ((2 * (1 + tanh(y[V + (i * N)] / 4.0))) * (1 - y[S + (i * N)])) - (y[S + (i * N)] / tau);
 		
-		//~ fprintf(stderr, "%lf\n", synsum);
 /*
 		synsum = 0.0;
 		if (DELAY >= STEPSIZE) {
@@ -232,17 +213,8 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 			
 		}
 */
-		if (NN == 1) {
-			if (pertmode) {
-				dydx[P + (N * i)] = 2 * (1 + tanh(*pert / 4.0)) * (1 - y[P + (N * i)]) - y[P + (N * i)] / tau;	//should probably be Ps instead of Ss
-			}
-			else {
-				dydx[P + (N * i)] = 2 * (1 + tanh((THRESHOLD) / 4.0)) * (1 - y[P + (N * i)]) - y[P + (N * i)] / tau;
-			}
-		}
-		else {
-			dydx[P + (N * i)] = 0;
-		}
+		
+		dydx[P + (N * i)] = 0;
 		
 		//2*(1+tanh(y[V1 + N*j + (N * i)]/4.0))*(1-y[S1 + N*j + (N * i)])-y[S1 + N*j]/TAUSYN;  
 	}
@@ -409,7 +381,7 @@ int main() {
 	tau = TAUSYN;
 	//Variables to do with simulation
 	long int nstep = (ENDTIME - STARTTIME) / STEPSIZE;	// This assumes the endtime-starttime is evenly divisible by the stepsize, which should always be true I think
-	printf("The initial simulation will contain %d steps.\n", nstep);
+	fprintf(stderr, "The initial simulation will contain %d steps.\n", nstep);
 	int i, j, k, pre;
 	double time;
 	double v[N * NN], vout[N * NN], dv[N * NN];					//v = variables (state and current), vout = output variables, dv = derivatives (fstate)
@@ -417,17 +389,7 @@ int main() {
 	extern double current[];				//external variable declaration
 	double weight[NN*NN];
 	scan_(weight, NN*NN, "weights.data");
-	//~ fprintf(stderr, "weights.data\n");
-	//~ printdarr(weight, NN * NN);
-	//~ for (i = 0; i < NN; i++) {
-		 //~ weight[i] = (double*) malloc(sizeof(double) * NN);
-		//~ for (pre = 0; pre < NN; ++pre) {
-			//~ weight[i][pre] = 1.0;
-		//~ }
-		//~ if (!SELF) {
-			//~ weight[i][i] = 0.;
-		//~ }
-	//~ }
+	
 	fprintf(stderr, "DELAY = %fms.\n", DELAY);
 	if (USE_LOWPROPOFOL) {
 		fprintf(stderr, "Using Low Dose Propofol starting at time %f and ending at %f.\n", PROPOFOL_START, PROPOFOL_END);
@@ -438,7 +400,7 @@ int main() {
 	fprintf(stderr, "Printing data to file ");
 	fprintf(stderr, FULLNAME);
 	fprintf(stderr, "\n");
-	//~ fprintf(stderr, "test1\n");
+
 	//Variables to do with delay
 	int dsteps = (int)(DELAY / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
 	double* buf[dsteps];
@@ -498,12 +460,12 @@ int main() {
 	for (k = 0; k < nstep; k++) {
 		
 		if (USE_LOWPROPOFOL) {	//changes gsyn to match the correct level of propofol in the simulation
-			gsyn = (time > PROPOFOL_START || time < PROPOFOL_END || prcmode) ? LOWPROP_GSYN: G_SYN; 
-			tau = (time > PROPOFOL_START || time < PROPOFOL_END || prcmode) ? LOWPROP_TAU : TAUSYN; 
+			gsyn = (time > PROPOFOL_START || time < PROPOFOL_END) ? LOWPROP_GSYN: G_SYN; 
+			tau = (time > PROPOFOL_START || time < PROPOFOL_END) ? LOWPROP_TAU : TAUSYN; 
 		}
 		else if (USE_HIGHPROPOFOL) {
-			gsyn = (time > PROPOFOL_START || time < PROPOFOL_END || prcmode) ? HIGHPROP_GSYN : G_SYN;
-			tau = (time > PROPOFOL_START || time < PROPOFOL_END || prcmode) ? HIGHPROP_TAU : TAUSYN;
+			gsyn = (time > PROPOFOL_START || time < PROPOFOL_END) ? HIGHPROP_GSYN : G_SYN;
+			tau = (time > PROPOFOL_START || time < PROPOFOL_END) ? HIGHPROP_TAU : TAUSYN;
 		}
 		else {	
 			gsyn = (G_SYN);
@@ -524,7 +486,7 @@ int main() {
 				if (INTERPOLATE) {
 					sptimes[spikecount] = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
 					//~ vout[0] = -50.0; //fudging the interpolated value to the most recent v[0] value so that it exactly matches the spike template
-					//~ printf("sptimes[spikecount] with interpolation is %f. Without is %f. The difference is %f.\n", sptimes[spikecount], time, (sptimes[spikecount] - time));
+					//~ fprintf(stderr, "sptimes[spikecount] with interpolation is %f. Without is %f. The difference is %f.\n", sptimes[spikecount], time, (sptimes[spikecount] - time));
 				}
 				else {
 					sptimes[spikecount] = time;
@@ -579,11 +541,11 @@ int main() {
 		//~ makefullsingle(y, xx, nstep, 15, "15full.data");
 		//~ makefullsingle(y, xx, nstep, 16, "16full.data");
 		//~ makefullsingle(y, xx, nstep, 17, "17full.data");
-		makefullsingle(y, xx, nstep, 18, "18full.data");
+		//~ makefullsingle(y, xx, nstep, 18, "18full.data");
 		//~ makefullsingle(y, xx, nstep, 19, "19full.data");
 	}
 	else {
-		printf("\n\nSince PLONG == 0, v-n.data are not being written\n\n");
+		fprintf(stderr, "\n\nSince PLONG == 0, v-n.data are not being written\n\n");
 	}
 	printdarr(v, N * NN);
 	fprintf(stderr,"This simulation counted %d spikes of Neuron[0].\n", spikecount);
@@ -592,7 +554,6 @@ int main() {
 			sumdiffs += sptimes[i + 1] - sptimes[i];
 			spdiffs[i - OFFSET] = sptimes[i + 1] - sptimes[i];
 		}
-		//~ printdarr(spdiffs, SAMPLESIZE - 1);
 		printperiod(spdiffs, SAMPLESIZE - 1, "period.data");
 		normalperiod = sumdiffs / (SAMPLESIZE - 1);
 		psteps = (int)round(normalperiod / STEPSIZE);
