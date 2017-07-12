@@ -55,8 +55,8 @@
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 5 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 20			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
-#define POPULATION 20		//number of neurons in the whole population, should be 20 for accurate representation of mccarthy
-#define MYCLUSTER 10			//number of neurons in the simulated neuron's population, should be 10 for accurate representation of mccarthy
+#define POPULATION 17		//number of neurons in the whole population, should be 20 for accurate representation of mccarthy
+#define MYCLUSTER 7			//number of neurons in the simulated neuron's population, should be 10 for accurate representation of mccarthy
 #define DO_PRC 1			//toggle for prc
 #define DO_TRACE 0			//toggles doing trace for a single (or multiple phase perturbations) but each is recorded individually
 #define TPHASE 0.985
