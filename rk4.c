@@ -37,11 +37,11 @@
 #define G_L   0.1
 #define G_SYN  0.165		//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
 #define TAUSYN 10			//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
-#define USE_I_APP 0			//really should be called "USE_IAPP_STEP"
+#define USE_I_APP 1			//really should be called "USE_IAPP_STEP"
 #define I_APP_START 500
 #define I_APP_END 501
-#define USE_LOWPROPOFOL 0	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
-#define USE_HIGHPROPOFOL 1
+#define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
+#define USE_HIGHPROPOFOL 0
 #define PROPOFOL_START 1.0
 #define PROPOFOL_END 100000.0
 #define LOWPROP_GSYN 0.25
@@ -62,7 +62,7 @@
 #define False 0
 #define INTERPOLATE 1
 #define PLONG 1
-#define FULLNAME "high0.data"
+#define FULLNAME "low0.data"
 #define DBIT 1
 //~ #define USE_MULTIPLIERS	0
 
@@ -130,7 +130,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 
 	for (i = 0; i < NN; i++) {
 		
-		if (i <= NN - 1 && USE_I_APP) {	//i <= NN - 1 indicates that the iapp step will be applied to all neurons simultaneously
+		if (i <= 9 && USE_I_APP) {	//i <= NN - 1 indicates that the iapp step will be applied to all neurons simultaneously
 			iapp = (time < I_APP_START || time > I_APP_END) ? I_APP : I_APP_STEP;	
 		}
 	
