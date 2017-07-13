@@ -3,9 +3,15 @@ from matplotlib import pyplot as plt
 import sys
 f, ax1= plt.subplots()
 v=np.genfromtxt(sys.argv[1])
+print v
+#~ exit(0)
 
 ax1.plot(v[:,0], v[:,1],"k-") 
-ax1.plot([0.5,1.],[-0.5,1.],"r--")
+ax1.plot([0.5,1.],[0.,1.],"r--")
+
+x = np.arange(0.0, 1.0, 0.01)
+print x
+#y =  
 
 #~ ax2 = ax1.twinx()
 #~ p=np.genfromtxt(sys.argv[2])
