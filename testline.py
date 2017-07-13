@@ -5,12 +5,12 @@ f, ax1= plt.subplots()
 v=np.genfromtxt(sys.argv[1])
 
 ax1.plot(v[:,0], v[:,1],"k-") 
-ax1.plot([0.5,1.],[0.,1.],"r--")
+ax1.plot([0.5,1.],[-0.5,1.],"r--")
 
-ax2 = ax1.twinx()
-p=np.genfromtxt(sys.argv[2])
-x=(p[:,0] - p[0,0])/(p[-1,0]-p[0,0])
-ax2.plot(x, p[:,1],"r-") 
+#~ ax2 = ax1.twinx()
+#~ p=np.genfromtxt(sys.argv[2])
+#~ x=(p[:,0] - p[0,0])/(p[-1,0]-p[0,0])
+#~ ax2.plot(x, p[:,1],"r-") 
 
 plt.show()
 #~ x = (np.linspace(0.0, 1.0, num=201)).tolist()
