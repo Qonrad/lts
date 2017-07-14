@@ -67,52 +67,11 @@
 #define DBIT 1
 #define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
 #define F(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*(1.-(X)/(Y)/2.)) : ((X)/(exp( (X)/ (Y) ) -1)) )
-//~ #define USE_MULTIPLIERS	0
 
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
 double gsyn, tau;
-/*
-int deriv_(double *xp, double *Y, double *F) {
-	extern double current[C*NN]; 
-	int el,n,j;
-	double time_;
-	
-	time_ = *xp;
-	
-	double iapp; //Conrad, declares iapp variable for step I_APP
-	
-	//printf("time = %f\n", time_);
-	//printf("epsilon = %f		EPSILON = %f\n", epsilon, EPSILON);
-	iapp = (time_ < 330 && time_ >300.) ? 2. : I_APP;//Conrad, controls the I_APP
-	
-	for(j=0;j<NN;j++)
-	{
-		current[I_NA1 + N*j] = G_NA*y[H]*pow(y[Mp],3.0)*(y[V1 + N*j]-E_NA);
-		current[I_K1 + N*j] = G_K*pow(y[N1 + N*j],4.0)*(y[V1 + N*j] - E_K);
-		current[I_M1 + N*j] = G_M*y[MN1 + N*j]*(y[V1 + N*j] - E_K);
-		current[I_L1 + N*j] =  G_L*(y[V1 + N*j] - E_L);
-		current[I_S1 + N*j] = G_SYN * y[S1 + N*j] * (y[V1 + N*j] - E_SYN);		//~ for (n=0;n<NN;n++) {
-			//~ if(n!=j) {
-				//~ current[I_S1 + N*j] =   current[I_S1 + N*j] + G_SYN*y[S1 +N*n]*(y[V1 +N*j] - E_SYN);
-			//~ }
-		//~ }
-		F[V1 + N*j] = (iapp + EPSILON - current[I_NA1 + N*j] - current[I_K1 + N*j] - current[I_M1 + N*j] - current[I_L1 + N*j] - current[I_S1 + N*j])/CM;
-		F[M1 + N*j] = 0.32*(y[V1 + N*j]+54.0)/(1.0-exp(-(y[V1 + N*j]+54.0)/4.0))*(1.0-y[M1 + N*j])-0.28*(y[V1 + N*j]+27.0)/(exp((y[V1 + N*j]+27.0)/5.0)-1.0)*y[M1 + N*j];   
-		F[H1 + N*j] = 0.128*exp(-(y[V1 + N*j]+50.0)/18.0)*(1.0-y[H1 + N*j])-4.0/(1.0+exp(-(y[V1 + N*j]+27.0)/5.0))*y[H1 + N*j];   
-		F[N1 + N*j] = 0.032*(y[V1 + N*j]+52.0)/(1.0-exp(-(y[V1 + N*j]+52.0)/5.0))*(1.0-y[N1 + N*j])-0.5*exp(-(y[V1 + N*j]+57.0)/40.0)*y[N1 + N*j];  
-		F[MN1 + N*j] = 3.209*0.0001*((y[V1 + N*j]+30.0)/(1.0-exp(-(y[V1 + N*j]+30.0)/9.0))*(1.0-y[MN1 + N*j]) 
-					  + (y[V1 + N*j]+30.0)/(1.0-exp((y[V1 + N*j]+30.0)/9.0))*y[MN1 + N*j]); 
-		F[S1 + N*j] = 2*(1+tanh(y[V1 + N*j]/4.0))*(1-y[S1 + N*j])-y[S1 + N*j]/TAUSYN; //2*(1+tanh(y[V1 + N*j]/4.0))*(1-y[S1 + N*j])-y[S1 + N*j]/TAUSYN;  
-	
-	}
-	//~ printf("current\n");
-	//~ printdarr(current, C);
-	return 0;
-}
-*/
 
-// Conrad code to print an array for debugging
 void printdarr(double *a, int numelems) {
 	int i;
 	fprintf(stderr, "[");
@@ -133,7 +92,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 
 	for (i = 0; i < NN; i++) {
 		
-		if (i >= I_APP_NEURONS && USE_I_APP) {	//i <= NN - 1 indicates that the iapp step will be applied to all neurons simultaneously
+		if (i >= I_APP_NEURONS && USE_I_APP) {
 			iapp = (time < I_APP_START || time > I_APP_END) ? I_APP : I_APP_STEP;	
 		}
 	
@@ -213,7 +172,7 @@ void rk4(double y[], double dydx[], int n, double x, double h, double yout[], do
 	h6 = h / 6.0;
 	xh = x + hh;
 	
-	for (i = 0; i < n; i++) {			//first step
+	for (i = 0; i < n; i++) {						//first step
 		yt[i] = y[i] + hh * dydx[i];
 	}
 	
@@ -425,19 +384,17 @@ int main() {
 		
 		del = buf[bufpos]; //moves the pointer one step ahead in the buffer
 		derivs(time, v, dv, del, weight);										//actually does the step
-		rk4(v, dv, (N * NN), time, STEPSIZE, vout, del, weight);		//actually does the step
+		rk4(v, dv, (N * NN), time, STEPSIZE, vout, del, weight);				//actually does the step
 		
 		if (DELAY >= STEPSIZE) {
-			for (j = 0; j < NN; ++j) {								//IMPORTANT: this calculates the f(vj) outside of derivs and places that into the buffer, preventing a large waste of computational time
-				del[j] = vout[S + (N * j)];		//dereferences the delay pointer, and puts the previous f(vj) in the same spot
+			for (j = 0; j < NN; ++j) {								
+				del[j] = vout[S + (N * j)];							//dereferences the delay pointer, and puts the previous y[S] in the same spot
 			}
 		}
 		if (vout[0] >= THRESHOLD && v[0] < THRESHOLD) {
 			if (spikecount < (SAMPLESIZE + OFFSET)) {
 				if (INTERPOLATE) {
 					sptimes[spikecount] = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
-					//~ vout[0] = -50.0; //fudging the interpolated value to the most recent v[0] value so that it exactly matches the spike template
-					//~ fprintf(stderr, "sptimes[spikecount] with interpolation is %f. Without is %f. The difference is %f.\n", sptimes[spikecount], time, (sptimes[spikecount] - time));
 				}
 				else {
 					sptimes[spikecount] = time;
