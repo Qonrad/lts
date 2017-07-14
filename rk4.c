@@ -65,12 +65,14 @@
 #define PLONG 1
 #define FULLNAME "low0.data"
 #define DBIT 1
+#define DIVNN 0
 #define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
 #define F(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*(1.-(X)/(Y)/2.)) : ((X)/(exp( (X)/ (Y) ) -1)) )
 
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
 double gsyn, tau;
+double iapps[NN];
 
 void printdarr(double *a, int numelems) {
 	int i;
@@ -97,7 +99,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		}
 	
 		else {
-			iapp = I_APP;
+			iapp = iapps[i];
 		}
 		
 		current[I_NA] = G_NA * y[H + (N * i)] * pow(y[M + (N * i)], 3.0) * (y[V + (N * i)] - E_NA);
@@ -117,7 +119,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		}		
 		y[P + (N * i)] = current[I_S] ;	//sets perturbation state variable to synaptic current, doesn't affect simulation, purely for debugging purposes
 		
-		current[I_S] *= gsyn * (y[V + (N * i)] - E_SYN); //multiplies synaptic current by maximum synaptic conductance and other stuff
+		current[I_S] *= (DIVNN) ? ((gsyn /(NN - 1)) * (y[V + (N * i)] - E_SYN)) : (gsyn * (y[V + (N * i)] - E_SYN)); //multiplies synaptic current by maximum synaptic conductance and other stuff
 		
 		//all of these (except for h) are using a method to prevent a divide by zero error I was encountering
 		dydx[V + (N * i)] = (iapp - current[I_NA] - current[I_K] - current[I_M] - current[I_L] - current[I_S]) / CM;
@@ -361,13 +363,19 @@ int main() {
 	
 	
 	xx[0] = STARTTIME;		
-	for (i = 0; i < (N * NN); i++) {
+	for (i = 0; i < (N * NN); ++i) {
 		v[i] = vout[i]; 
 		y[0][i] = v[i];
 		
 	}
+	
+	iapps[0] = I_APP;
+	for (i = 1; i < NN; ++i) {						//adding heterogeneity through slightly different iapps like mccarthy does
+		iapps[i] = iapps[i - 1] + 0.005;
+	}
+	
 
-	for (k = 0; k < nstep; k++) {
+	for (k = 0; k < nstep; ++k) {
 		
 		if (USE_LOWPROPOFOL) {	//changes gsyn to match the correct level of propofol in the simulation
 			gsyn = (time > PROPOFOL_START || time < PROPOFOL_END) ? LOWPROP_GSYN: G_SYN; 
@@ -455,7 +463,6 @@ int main() {
 	else {
 		fprintf(stderr, "\n\nSince PLONG == 0, v-n.data are not being written\n\n");
 	}
-	printdarr(v, N * NN);
 	fprintf(stderr,"This simulation counted %d spikes of Neuron[0].\n", spikecount);
 	if (spikecount >= (SAMPLESIZE + OFFSET)) {
 		for (i = OFFSET; i < SAMPLESIZE + OFFSET - 1; ++i) {		//calculates differences between spike times to find each period
