@@ -38,6 +38,7 @@
 #define G_SYN  0.165		//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
 #define TAUSYN 10			//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
 #define USE_I_APP 0			//really should be called "USE_IAPP_STEP"
+#define I_APP_NEURONS 9		//if I_APP enabled, directs the I_APP to affect neurons 0-I_APP_NEURONS 
 #define I_APP_START 500
 #define I_APP_END 501
 #define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
@@ -64,6 +65,8 @@
 #define PLONG 1
 #define FULLNAME "low0.data"
 #define DBIT 1
+#define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
+#define F(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*(1.-(X)/(Y)/2.)) : ((X)/(exp( (X)/ (Y) ) -1)) )
 //~ #define USE_MULTIPLIERS	0
 
 double current[C];	//external current variable, similar to how Canavier did it
@@ -130,7 +133,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 
 	for (i = 0; i < NN; i++) {
 		
-		if (i > 9 && USE_I_APP) {	//i <= NN - 1 indicates that the iapp step will be applied to all neurons simultaneously
+		if (i >= I_APP_NEURONS && USE_I_APP) {	//i <= NN - 1 indicates that the iapp step will be applied to all neurons simultaneously
 			iapp = (time < I_APP_START || time > I_APP_END) ? I_APP : I_APP_STEP;	
 		}
 	
@@ -138,13 +141,11 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 			iapp = I_APP;
 		}
 		
-		// (((y[V + (N * i)] - (-54)) / 4) < 10e-6) ? (0.32 * 4.0) :
 		current[I_NA] = G_NA * y[H + (N * i)] * pow(y[M + (N * i)], 3.0) * (y[V + (N * i)] - E_NA);
 		current[I_K] =  G_K * pow(y[NV + (N * i)], 4.0) * (y[V + (N * i)] - E_K);
 		current[I_M] =  G_M * y[MN + (N * i)] * (y[V + (N * i)] - E_K);
 		current[I_L] =  G_L * (y[V + (N * i)] - E_L);
 		
-		//Ruben's crazy idea, seems to work!
 		current[I_S] = 0.0;
 		if (DELAY >= STEPSIZE) {
 			for (j = 0; j < NN; ++j) {
@@ -154,69 +155,19 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 			for (j = 0; j < NN; ++j) {
 				current[I_S] += weight[j + (i * NN)] * y[S + (N * j)]; //sums up products of weight and presynaptic y[S]
 			}
-		//	printf("time = %f i = %d sum = %f\n", time, i, current[I_S]);
 		}		
 		y[P + (N * i)] = current[I_S] ;	//sets perturbation state variable to synaptic current, doesn't affect simulation, purely for debugging purposes
 		
-		current[I_S] *= gsyn * (y[V + (N * i)] - E_SYN);
+		current[I_S] *= gsyn * (y[V + (N * i)] - E_SYN); //multiplies synaptic current by maximum synaptic conductance and other stuff
 		
-		//???????????vvvvvvv
-		//~ if (USE_MULTIPLIERS) {
-			//~ current[I_S] =  gsyn * ((y[S + (N * i)] * (MYCLUSTER - 1))+ (y[P + (N * i)] * (POPULATION - MYCLUSTER))) * (y[V + (N * i)] - E_SYN);
-		//~ }
-		//~ else {
-			//~ current[I_S] = gsyn * y[S + (N * i)] * (y[V + (N * i)] - E_SYN);
-		//~ }
-		
+		//all of these (except for h) are using a method to prevent a divide by zero error I was encountering
 		dydx[V + (N * i)] = (iapp - current[I_NA] - current[I_K] - current[I_M] - current[I_L] - current[I_S]) / CM;
-		dydx[M + (N * i)] =  (( fabs(((y[V + (N * i)] + 54)) / 4) < 10e-6) ? (0.32 * 4.0) : ( f(y[V + (N * i)], 0.32, -54, 4.0) )) * (1.0 - y[M + (N * i)]) - ((fabs(((y[V + (N * i)] + 27)) / 5) < 10e-6) ? (-0.28 * -5) : ( f(y[V + (N * i)], -0.28, -27, -5.0) )) * y[M + (N * i)];
-		//0.32 * (y[V + (N * i)] + 54.0) / (1.0 - exp(-(y[V + (N * i)] + 54.0) / 4.0)) * (1.0 - y[M + (N * i)]) - 0.28 * (y[V + (N * i)] + 27.0) / (exp((y[V + (N * i)] + 27.0) / 5.0) - 1.0) * y[M + (N * i)];   
+		dydx[M + (N * i)] = ((0.32) * G((y[V + (N * i)] + 54), -4.) * (1. - y[M + (N * i)])) - ((0.28) * F((y[V + (N * i)] + 27), 5.) * y[M + (N * i)]);
 		dydx[H + (N * i)] = 0.128 * exp(-(y[V + (N * i)] + 50.0) / 18.0) * (1.0 - y[H + (N * i)]) - 4.0 / (1.0 + exp(-(y[V + (N * i)] + 27.0) / 5.0)) * y[H + (N * i)];   
-		dydx[NV + (N * i)] = ((fabs(((y[V + (N * i)] + 52)) / 5) < 10e-6) ? (0.032 * 5) : (f(y[V + (N * i)], 0.032, -52, 5.0) )) * (1.0 - y[NV + (N * i)]) - 0.5 * exp(-(y[V + (N * i)] + 57.0) / 40.0) * y[NV + (N * i)];
-		//0.032 * (y[V + (N * i)] + 52.0) / (1.0 - exp(-(y[V + (N * i)] + 52.0) / 5.0)) * (1.0 - y[NV + (N * i)]) - 0.5 * exp(-(y[V + (N * i)] + 57.0) / 40.0) * y[NV + (N * i)];  
-		dydx[MN + (N * i)] = ((fabs(((y[V + (N * i)] + 30)) / 9) < 10e-6) ? (3.209 * 0.0001 * 9.0) : (f(y[V + (N * i)], (3.209 * 0.0001), -30, 9.0) )) * (1.0 - y[MN + (N * i)]) + (((fabs(((y[V + (N * i)] + 30)) / 9) < 10e-6) ? (3.209 * 0.0001 * -9.0) : (f(y[V + (N * i)], (3.209 * 0.0001), -30, -9.0) )) * y[MN + (N * i)]);
-		//above has -q in both approximation and formula, reexamine this!!!!
-		//3.209 * 0.0001 * ((y[V + (N * i)] + 30.0) / (1.0 - exp(-(y[V + (N * i)] + 30.0) / 9.0)) * (1.0 - y[MN + (N * i)]) + (y[V + (N * i)] + 30.0) / (1.0 - exp((y[V + (N * i)] + 30.0) / 9.0)) * y[MN + (N * i)]); 
-		
-		dydx[S + (N * i)] = ((2 * (1 + tanh(y[V + (i * N)] / 4.0))) * (1 - y[S + (i * N)])) - (y[S + (i * N)] / tau);
-		
-/*
-		synsum = 0.0;
-		if (DELAY >= STEPSIZE) {
-			//newest edit: *oldv should be the 2 * tanh() function of the previous voltage, moved outside of the driver to prevent waste of computational resources
-			//~ for (j = 0; j < NN; ++j) {
-					//~ synsum += oldv[j] * (1 - y[S + (N * i)]) * weight[i*NN+j];
-			//~ }
-
-			//?????????????????vvvvvvv
-			//~ dydx[S + (N * i)] = (synsum - (y[S + (N * i)] / tau)); //uses *oldv which should be del, the delay pointer in the buffer
-			
-			dydx[S + (N * i)] = ((2 * (1 + tanh(y[V + (i * N)] / 4.0))) * (1 - y[S + (i * N)])) - y[S + (i * N)] / tau;
-			
-			//~ dydx[S + (N * i)] = 2 * (1 + tanh(*oldv / 4.0)) * (1 - y[S + (N * i)]) - y[S + (N * i)] / tau; //uses *oldv which should be del, the delay pointer in the buffer
-			//~ printf("I exist at time %f.\n", time);
-		}
-		else {
-			//~ for (j = 0; j < NN; ++j) {
-					//~ synsum += (2 * (1 + tanh(y[V + (j * N)] / 4.0))) * weight[j + (i * NN)];
-					//~ if (synsum >= 80.) {
-						//~ fprintf(stderr, "synsum = %f time = %f y[V + (j * N)] = %f i(postsynaptic neuron) = %d j(presynaptic neuron) = %d weight[j + (i * NN)] = %f\n", synsum, time, y[V + (j * N)], i, j, weight[j + (i * NN)]);
-					//~ }
-			//~ }
-			//~ dydx[S + (N * i)] = synsum * (NN - 1 - y[S + (N * i)])- y[S + (N * i)] / tau;
-			//~ if (synsum >= 1) {
-					//~ fprintf(stderr, "time = %g synsum = %g\n", time, synsum);
-			//~ }
-			//~ dydx[S + (N * i)] = 2 * (1 + tanh(y[V + (N * i)] / 4.0)) * (1 - y[S + (N * i)]) - y[S + (N * i)] / tau;
-			
-			
-			
-		}
-*/
-		
+		dydx[NV + (N * i)] = ((0.032) * G((y[V + (N * i)] + 52), -5.) * (1. - y[NV + (N * i)])) - (0.5 * exp(-(y[V + (N * i)] + 57.) / 40.) * y[NV + (N * i)]); 
+		dydx[MN + (N * i)] = ((3.209 * 0.0001) * G((y[V + (N * i)] + 30), -9.)  * (1.0 - y[MN + (N * i)])) + ((3.209 * 0.0001) * G((y[V + (N * i)] + 30), 9.) * y[MN + (N * i)]);
+		dydx[S + (N * i)] = ((2 * (1 + tanh(y[V + (i * N)] / 4.0))) * (1 - y[S + (i * N)])) - (y[S + (i * N)] / tau);		
 		dydx[P + (N * i)] = 0;
-		
-		//2*(1+tanh(y[V1 + N*j + (N * i)]/4.0))*(1-y[S1 + N*j + (N * i)])-y[S1 + N*j]/TAUSYN;  
 	}
 	return;
 }
