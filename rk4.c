@@ -32,16 +32,16 @@
 #define E_SYN  -80.0
 #define G_NA 100.0 /* mS/cm2*/
 #define G_K   80.0
-#define G_M   2				// Was previously almost always 2, McCarthy paper says "between 0 and 4", gmi
+#define G_M   4				// Was previously almost always 2, McCarthy paper says "between 0 and 4", gmi
 #define G_L   0.1
-#define G_SYN  0.165		//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
+#define G_SYN  3.3		//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
 #define TAUSYN 5			//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
-#define USE_I_APP 1
+#define USE_I_APP 0
 #define I_APP_START 500
 #define I_APP_END 501
 #define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
 #define USE_HIGHPROPOFOL 0
-#define PROPOFOL_START 300
+#define PROPOFOL_START 2200
 #define PROPOFOL_END 100000
 #define LOWPROP_GSYN 0.25
 #define LOWPROP_TAU 10
@@ -53,11 +53,11 @@
 #define DELAY 0.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
-#define SAMPLESIZE 5 		//number of spikes that are averaged together to give unperturbed period
-#define OFFSET 20			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
+#define SAMPLESIZE 3 		//number of spikes that are averaged together to give unperturbed period
+#define OFFSET 0			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population, should be 20 for accurate representation of mccarthy
-#define MYCLUSTER 10			//number of neurons in the simulated neuron's population, should be 10 for accurate representation of mccarthy
-#define DO_PRC 0			//toggle for prc
+#define MYCLUSTER 19			//number of neurons in the simulated neuron's population, should be 10 for accurate representation of mccarthy
+#define DO_PRC 1			//toggle for prc
 #define DO_TRACE 0			//toggles doing trace for a single (or multiple phase perturbations) but each is recorded individually
 #define TPHASE 0.985
 #define INTERVAL 100			//number of intervals prc analysis will be done on
@@ -444,7 +444,6 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 				else {
 					flag2 = k;
 					trace->fphi2 = ((double)(k) - (double)(flag1))/ (double)(psteps);
-					//~ printf("k %d ptime %f targstep %d prc[prcpos].phase %f time %f prc[prcpos].fphi1 %f flag1 %d flag2 %d prc[prcpos].fphi2 %f\n", k, ptime, targstep, prc[prcpos].phase, time, prc[prcpos].fphi1, flag1, flag2, prc[prcpos].fphi2);
 				}
 			}
 		for (i = 0; i < N; i++) {
