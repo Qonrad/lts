@@ -36,7 +36,7 @@
 #define G_M   4				// Was previously almost always 2, McCarthy paper says "between 0 and 4", gmi
 #define G_L   0.1
 #define G_SYN  0.165		//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
-#define TAUSYN 10			//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
+#define TAUSYN 5			//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
 #define USE_I_APP 0			//really should be called "USE_IAPP_STEP"
 #define I_APP_HET 1
 #define I_APP_NEURONS 0		//if I_APP enabled, directs the I_APP to affect neurons 0-I_APP_NEURONS 
@@ -364,6 +364,12 @@ int main() {
 		}
 	}
 
+	
+	iapps[0] = I_APP;
+	for (i = 1; i < NN; ++i) {						//adding heterogeneity through slightly different iapps like mccarthy does
+		iapps[i] = iapps[i - 1] + 0.005;
+	}
+	
 	derivs(time, v, dv, del, weight);
 	rk4(v, dv, (N * NN), time, STEPSIZE, vout, del, weight);
 	
@@ -374,26 +380,20 @@ int main() {
 		y[0][i] = v[i];
 		
 	}
-	
-	iapps[0] = I_APP;
-	for (i = 1; i < NN; ++i) {						//adding heterogeneity through slightly different iapps like mccarthy does
-		iapps[i] = iapps[i - 1] + 0.005;
-	}
-	
 
 	for (k = 0; k < nstep; ++k) {
 		
 		if (USE_LOWPROPOFOL) {	//changes gsyn to match the correct level of propofol in the simulation
 			gsyn = (time > PROPOFOL_START && time < PROPOFOL_END) ? LOWPROP_GSYN : G_SYN; 
-			tau = (time > PROPOFOL_START && time < PROPOFOL_END) ? LOWPROP_TAU : TAUSYN; 
+			tau  = (time > PROPOFOL_START && time < PROPOFOL_END) ? LOWPROP_TAU : TAUSYN; 
 		}
 		else if (USE_HIGHPROPOFOL) {
 			gsyn = (time > PROPOFOL_START && time < PROPOFOL_END) ? HIGHPROP_GSYN : G_SYN;
-			tau = (time > PROPOFOL_START && time < PROPOFOL_END) ? HIGHPROP_TAU : TAUSYN;
+			tau  = (time > PROPOFOL_START && time < PROPOFOL_END) ? HIGHPROP_TAU : TAUSYN;
 		}
 		else {	
 			gsyn = (G_SYN);
-			tau = TAUSYN;
+			tau  = TAUSYN;
 		}
 		
 		del = buf[bufpos]; //moves the pointer one step ahead in the buffer
