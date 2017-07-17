@@ -38,7 +38,8 @@
 #define G_SYN  0.165		//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
 #define TAUSYN 10			//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
 #define USE_I_APP 0			//really should be called "USE_IAPP_STEP"
-#define I_APP_NEURONS 9		//if I_APP enabled, directs the I_APP to affect neurons 0-I_APP_NEURONS 
+#define I_APP_HET 1
+#define I_APP_NEURONS 0		//if I_APP enabled, directs the I_APP to affect neurons 0-I_APP_NEURONS 
 #define I_APP_START 500
 #define I_APP_END 501
 #define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
@@ -99,11 +100,16 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		}
 	
 		else {
-			iapp = iapps[i];
+			if (I_APP_HET) {
+				iapp = iapps[i];
+			}
+			else {
+				iapp = I_APP;
+			}
 		}
 		
-		current[I_NA] = G_NA * y[H + (N * i)] * pow(y[M + (N * i)], 3.0) * (y[V + (N * i)] - E_NA);
-		current[I_K] =  G_K * pow(y[NV + (N * i)], 4.0) * (y[V + (N * i)] - E_K);
+		current[I_NA] = G_NA * y[H + (N * i)] * y[M + (N * i)] * y[M + (N * i)] * y[M + (N * i)] * (y[V + (N * i)] - E_NA);
+		current[I_K] =  G_K * y[NV + (N * i)] * y[NV + (N * i)] * y[NV + (N * i)] * y[NV + (N * i)] * (y[V + (N * i)] - E_K);
 		current[I_M] =  G_M * y[MN + (N * i)] * (y[V + (N * i)] - E_K);
 		current[I_L] =  G_L * (y[V + (N * i)] - E_L);
 		
@@ -378,12 +384,12 @@ int main() {
 	for (k = 0; k < nstep; ++k) {
 		
 		if (USE_LOWPROPOFOL) {	//changes gsyn to match the correct level of propofol in the simulation
-			gsyn = (time > PROPOFOL_START || time < PROPOFOL_END) ? LOWPROP_GSYN: G_SYN; 
-			tau = (time > PROPOFOL_START || time < PROPOFOL_END) ? LOWPROP_TAU : TAUSYN; 
+			gsyn = (time > PROPOFOL_START && time < PROPOFOL_END) ? LOWPROP_GSYN : G_SYN; 
+			tau = (time > PROPOFOL_START && time < PROPOFOL_END) ? LOWPROP_TAU : TAUSYN; 
 		}
 		else if (USE_HIGHPROPOFOL) {
-			gsyn = (time > PROPOFOL_START || time < PROPOFOL_END) ? HIGHPROP_GSYN : G_SYN;
-			tau = (time > PROPOFOL_START || time < PROPOFOL_END) ? HIGHPROP_TAU : TAUSYN;
+			gsyn = (time > PROPOFOL_START && time < PROPOFOL_END) ? HIGHPROP_GSYN : G_SYN;
+			tau = (time > PROPOFOL_START && time < PROPOFOL_END) ? HIGHPROP_TAU : TAUSYN;
 		}
 		else {	
 			gsyn = (G_SYN);
