@@ -35,7 +35,7 @@
 #define G_M   2				// Was previously almost always 2, McCarthy paper says "between 0 and 4", gmi
 #define G_L   0.1
 #define G_SYN  0.165		//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
-#define TAUSYN 10			//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
+#define TAUSYN 5			//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
 #define USE_I_APP 1
 #define I_APP_START 500
 #define I_APP_END 501
@@ -116,20 +116,20 @@ void derivs(double time, double *y, double *dydx, double *oldv) {
 	}
 	
 	if (USE_LOWPROPOFOL) {
-		gsyn = (time > PROPOFOL_START || time < PROPOFOL_END || prcmode) ? LOWPROP_GSYN : G_SYN;
-		tau = (time > PROPOFOL_START || time < PROPOFOL_END || prcmode) ? LOWPROP_TAU : TAUSYN; 
+		gsyn = ((time > PROPOFOL_START && time < PROPOFOL_END) || prcmode) ? LOWPROP_GSYN : G_SYN;
+		tau = ((time > PROPOFOL_START && time < PROPOFOL_END) || prcmode) ? LOWPROP_TAU : TAUSYN; 
 	}
 	else if (USE_HIGHPROPOFOL) {
-		gsyn = (time > PROPOFOL_START || time < PROPOFOL_END || prcmode) ? HIGHPROP_GSYN : G_SYN;
-		tau = (time > PROPOFOL_START || time < PROPOFOL_END || prcmode) ? HIGHPROP_TAU : TAUSYN;
+		gsyn = ((time > PROPOFOL_START && time < PROPOFOL_END) || prcmode) ? HIGHPROP_GSYN : G_SYN;
+		tau = ((time > PROPOFOL_START && time < PROPOFOL_END) || prcmode) ? HIGHPROP_TAU : TAUSYN;
 	}
 	else {	
 		gsyn = (G_SYN);
 		tau = TAUSYN;
 	}
 	
-	current[I_NA] = G_NA * y[H] * pow(y[M], 3.0) * (y[V] - E_NA);
-	current[I_K] =  G_K * pow(y[NV], 4.0) * (y[V] - E_K);
+	current[I_NA] = G_NA * y[H] * y[M] * y[M] * y[M] * (y[V] - E_NA);
+	current[I_K] =  G_K * y[NV] * y[NV] * y[NV] * y[NV] * (y[V] - E_K);
 	current[I_M] =  G_M * y[MN] * (y[V] - E_K);
 	current[I_L] =  G_L * (y[V] - E_L);
 	current[I_S] =  gsyn * ((y[S] * (MYCLUSTER - 1))+ (y[P] * (POPULATION - MYCLUSTER))) * (y[V] - E_SYN);
