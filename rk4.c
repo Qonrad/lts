@@ -38,22 +38,24 @@
 #define G_SYN  0.165		//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
 #define TAUSYN 5			//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
 #define USE_I_APP 0			//really should be called "USE_IAPP_STEP"
-#define I_APP_HET 1
+#define I_APP_HET 0
 #define I_APP_NEURONS 0		//if I_APP enabled, directs the I_APP to affect neurons 0-I_APP_NEURONS 
 #define I_APP_START 500
 #define I_APP_END 501
-#define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
-#define USE_HIGHPROPOFOL 0
-#define PROPOFOL_START 0.0
-#define PROPOFOL_END 100000.0
-#define LOWPROP_GSYN 0.0125
+#define USE_LOWPROPOFOL 1	
+#define USE_HIGHPROPOFOL 1
+#define LOW_PROPOFOL_START 0.0
+#define LOW_PROPOFOL_END 2000.0
+#define HIGH_PROPOFOL_START 2000.0
+#define HIGH_PROPOFOL_END 5000.0
+#define LOWPROP_GSYN 0.25 //should be 0.25, divided it by 20 instead of using DIVNN to exactly match Carmen's code
 #define LOWPROP_TAU 10
 #define HIGHPROP_GSYN 0.5
 #define HIGHPROP_TAU 20
 #define STARTTIME 0
 #define ENDTIME 4700
 #define STEPSIZE 0.05
-#define DELAY 0.0			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
+#define DELAY 3.5			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 5 		//number of spikes that are averaged together to give unperturbed period
@@ -66,7 +68,7 @@
 #define PLONG 1
 #define FULLNAME "low0.data"
 #define DBIT 1
-#define DIVNN 0
+#define DIVNN 1
 #define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
 #define F(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*(1.-(X)/(Y)/2.)) : ((X)/(exp( (X)/ (Y) ) -1)) )
 
@@ -310,10 +312,10 @@ int main() {
 	
 	fprintf(stderr, "DELAY = %fms.\n", DELAY);
 	if (USE_LOWPROPOFOL) {
-		fprintf(stderr, "Using Low Dose Propofol starting at time %f and ending at %f.\n", PROPOFOL_START, PROPOFOL_END);
+		fprintf(stderr, "Using Low Dose Propofol starting at time %f and ending at %f.\n", LOW_PROPOFOL_START, LOW_PROPOFOL_END);
 	}
 	if (USE_HIGHPROPOFOL) {
-		fprintf(stderr, "Using High Dose Propofol starting at time %f and ending at %f.\n", PROPOFOL_START, PROPOFOL_END);
+		fprintf(stderr, "Using High Dose Propofol starting at time %f and ending at %f.\n", HIGH_PROPOFOL_START, HIGH_PROPOFOL_END);
 	}
 	fprintf(stderr, "Printing data to file ");
 	fprintf(stderr, FULLNAME);
@@ -383,13 +385,13 @@ int main() {
 
 	for (k = 0; k < nstep; ++k) {
 		
-		if (USE_LOWPROPOFOL) {	//changes gsyn to match the correct level of propofol in the simulation
-			gsyn = (time > PROPOFOL_START && time < PROPOFOL_END) ? LOWPROP_GSYN : G_SYN; 
-			tau  = (time > PROPOFOL_START && time < PROPOFOL_END) ? LOWPROP_TAU : TAUSYN; 
+		if (USE_LOWPROPOFOL && time > LOW_PROPOFOL_START && time < LOW_PROPOFOL_END) {	//changes gsyn to match the correct level of propofol in the simulation
+			gsyn = (time > LOW_PROPOFOL_START && time < LOW_PROPOFOL_END) ? LOWPROP_GSYN : G_SYN; 
+			tau  = (time > LOW_PROPOFOL_START && time < LOW_PROPOFOL_END) ? LOWPROP_TAU : TAUSYN; 
 		}
-		else if (USE_HIGHPROPOFOL) {
-			gsyn = (time > PROPOFOL_START && time < PROPOFOL_END) ? HIGHPROP_GSYN : G_SYN;
-			tau  = (time > PROPOFOL_START && time < PROPOFOL_END) ? HIGHPROP_TAU : TAUSYN;
+		if (USE_HIGHPROPOFOL && time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END) {
+			gsyn = (time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END) ? HIGHPROP_GSYN : G_SYN;
+			tau  = (time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END) ? HIGHPROP_TAU : TAUSYN;
 		}
 		else {	
 			gsyn = (G_SYN);
