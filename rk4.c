@@ -66,7 +66,7 @@
 #define False 0
 #define INTERPOLATE 1
 #define PLONG 1
-#define FULLNAME "low0.data"
+#define FULLNAME "lowhigh.data"
 #define DBIT 1
 #define DIVNN 1
 #define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
