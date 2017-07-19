@@ -39,8 +39,8 @@
 #define USE_I_APP 0
 #define I_APP_START 500
 #define I_APP_END 501
-#define USE_LOWPROPOFOL 1	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
-#define USE_HIGHPROPOFOL 0
+#define USE_LOWPROPOFOL 0	//obviously low and high propofol can't be used together, if both are 1, then lowpropofol is used
+#define USE_HIGHPROPOFOL 1
 #define PROPOFOL_START 0
 #define PROPOFOL_END 100000
 #define LOWPROP_GSYN 0.25
@@ -53,8 +53,8 @@
 #define DELAY 3.5 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
-#define SAMPLESIZE 100 		//number of spikes that are averaged together to give unperturbed period
-#define OFFSET 50			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
+#define SAMPLESIZE 90 		//number of spikes that are averaged together to give unperturbed period
+#define OFFSET 40			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population, should be 20 for accurate representation of mccarthy
 #define MYCLUSTER 10			//number of neurons in the simulated neuron's population, should be 10 for accurate representation of mccarthy
 #define DO_PRC 1			//toggle for prc
@@ -682,7 +682,7 @@ int main() {
 		makedata(y, xx, nstep, M, "m.data");
 		makedata(y, xx, nstep, H, "h.data");
 		makedata(y, xx, nstep, NV, "n.data");
-		makefull(y, xx, nstep, "low3.5del.data");
+		makefull(y, xx, nstep, "high3.5del.data");
 	}
 	else {
 		printf("\n\nSince PLONG == 0, v-n.data are not being written\n\n");
