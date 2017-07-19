@@ -43,28 +43,29 @@
 #define USE_HIGHPROPOFOL 0
 #define PROPOFOL_START 0
 #define PROPOFOL_END 100000
-#define LOWPROP_GSYN 0.0125
+#define LOWPROP_GSYN 0.25
 #define LOWPROP_TAU 10
 #define HIGHPROP_GSYN 0.5
 #define HIGHPROP_TAU 20
 #define STARTTIME 0
-#define ENDTIME 4700
+#define ENDTIME 10000
 #define STEPSIZE 0.01
 #define DELAY 0.0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
-#define SAMPLESIZE 30 		//number of spikes that are averaged together to give unperturbed period
-#define OFFSET 30			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
+#define SAMPLESIZE 100 		//number of spikes that are averaged together to give unperturbed period
+#define OFFSET 50			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population, should be 20 for accurate representation of mccarthy
-#define MYCLUSTER 7			//number of neurons in the simulated neuron's population, should be 10 for accurate representation of mccarthy
+#define MYCLUSTER 10			//number of neurons in the simulated neuron's population, should be 10 for accurate representation of mccarthy
 #define DO_PRC 1			//toggle for prc
 #define DO_TRACE 0			//toggles doing trace for a single (or multiple phase perturbations) but each is recorded individually
 #define TPHASE 0.985
-#define INTERVAL 100			//number of intervals prc analysis will be done on
+#define INTERVAL 500			//number of intervals prc analysis will be done on
 #define True 1
 #define False 0
 #define INTERPOLATE 1
 #define PLONG 1
+#define DIVPOP 1
 #define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
 #define F(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*(1.-(X)/(Y)/2.)) : ((X)/(exp( (X)/ (Y) ) -1)) )
 
@@ -124,8 +125,12 @@ void derivs(double time, double *y, double *dydx, double *oldv) {
 		tau = ((time > PROPOFOL_START && time < PROPOFOL_END) || prcmode) ? HIGHPROP_TAU : TAUSYN;
 	}
 	else {	
-		gsyn = (G_SYN);
+		gsyn = G_SYN;
 		tau = TAUSYN;
+	}
+	
+	if (DIVPOP) {
+		gsyn /= POPULATION;
 	}
 	
 	current[I_NA] = G_NA * y[H] * y[M] * y[M] * y[M] * (y[V] - E_NA);
@@ -677,7 +682,7 @@ int main() {
 		makedata(y, xx, nstep, M, "m.data");
 		makedata(y, xx, nstep, H, "h.data");
 		makedata(y, xx, nstep, NV, "n.data");
-		makefull(y, xx, nstep, "nodelfull.data");
+		makefull(y, xx, nstep, "low0del.data");
 	}
 	else {
 		printf("\n\nSince PLONG == 0, v-n.data are not being written\n\n");
