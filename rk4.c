@@ -50,14 +50,14 @@
 #define STARTTIME 0
 #define ENDTIME 50000
 #define STEPSIZE 0.01
-#define DELAY 0 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
+#define DELAY 3.5 			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 300 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 200			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population, should be 20 for accurate representation of mccarthy
 #define MYCLUSTER 10			//number of neurons in the simulated neuron's population, should be 10 for accurate representation of mccarthy
-#define DO_PRC 0			//toggle for prc
+#define DO_PRC 1			//toggle for prc
 #define DO_TRACE 0			//toggles doing trace for a single (or multiple phase perturbations) but each is recorded individually
 #define TPHASE 0.985
 #define INTERVAL 500			//number of intervals prc analysis will be done on
