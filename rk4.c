@@ -54,7 +54,7 @@
 #define HIGHPROP_TAU 20
 #define STARTTIME 0
 #define ENDTIME 4700
-#define STEPSIZE 0.01
+#define STEPSIZE 0.05
 #define DELAY 3.5			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
@@ -64,11 +64,11 @@
 #define MYCLUSTER 10		//number of neurons in the simulated neuron's population
 #define True 1
 #define False 0
-#define INTERPOLATE 1
+#define INTERPOLATE 0
 #define PLONG 1
 #define FULLNAME "lowhigh.data"
 #define DBIT 1
-#define DIVNN 1
+#define DIVNN 0
 #define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
 #define F(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*(1.-(X)/(Y)/2.)) : ((X)/(exp( (X)/ (Y) ) -1)) )
 
@@ -91,8 +91,7 @@ static inline double f(double v, double a, double th, double q) {
 }
 
 void derivs(double time, double *y, double *dydx, double *oldv, double* weight) { 
-	double iapp, synsum;
-	double *pert;
+	double iapp;
 	int i, j;
 
 	for (i = 0; i < NN; i++) {
@@ -359,7 +358,7 @@ int main() {
 	scan_(v, N*NN, "state.data");				//scanning in initial variables (state variables only) 
 
 	if (DELAY >= STEPSIZE) {
-		for (i = 0; i < (dsteps); ++i) {//sets every double in buffer(s) to be equal to the steady state (initial) voltage that was just scanned in
+		for (i = 0; i < (dsteps); ++i) {//sets every double in buffer(s) to be equal to 0
 			for (j = 0; j < NN; ++j) {
 					buf[i][j] = 0.0;
 			}
@@ -389,7 +388,7 @@ int main() {
 			gsyn = (time > LOW_PROPOFOL_START && time < LOW_PROPOFOL_END) ? LOWPROP_GSYN : G_SYN; 
 			tau  = (time > LOW_PROPOFOL_START && time < LOW_PROPOFOL_END) ? LOWPROP_TAU : TAUSYN; 
 		}
-		if (USE_HIGHPROPOFOL && time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END) {
+		else if (USE_HIGHPROPOFOL && time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END) {
 			gsyn = (time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END) ? HIGHPROP_GSYN : G_SYN;
 			tau  = (time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END) ? HIGHPROP_TAU : TAUSYN;
 		}
