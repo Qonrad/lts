@@ -324,7 +324,7 @@ int main() {
 	//Variables to do with delay
 	int dsteps = (int)(DELAY / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
 	double* buf[dsteps];
-	for (i = 0; i < dsteps; i++) {
+	for (i = 0; i < dsteps; ++i) {
 		buf[i] = (double*) malloc(sizeof(double) * NN);		//allocates memory for an array of arrays, length depending on the number of neurons in the simulation
 	}
 	int bufpos = 0;								//holds the position in the buffer that the del  pointer is at
