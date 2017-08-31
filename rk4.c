@@ -68,7 +68,7 @@
 #define PLONG 1
 #define FULLNAME "lowhigh.data"
 #define DBIT 1
-#define DIVNN 0
+#define DIVNN 1
 #define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
 #define F(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*(1.-(X)/(Y)/2.)) : ((X)/(exp( (X)/ (Y) ) -1)) )
 
@@ -126,7 +126,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		}		
 		y[P + (N * i)] = current[I_S] ;	//sets perturbation state variable to synaptic current, doesn't affect simulation, purely for debugging purposes
 		
-		current[I_S] *= (DIVNN) ? ((gsyn /(NN - 1)) * (y[V + (N * i)] - E_SYN)) : (gsyn * (y[V + (N * i)] - E_SYN)); //multiplies synaptic current by maximum synaptic conductance and other stuff
+		current[I_S] *= (DIVNN) ? ((gsyn / (NN - 1)) * (y[V + (N * i)] - E_SYN)) : (gsyn * (y[V + (N * i)] - E_SYN)); //multiplies synaptic current by maximum synaptic conductance and other stuff
 		
 		//all of these (except for h) are using a method to prevent a divide by zero error I was encountering
 		dydx[V + (N * i)] = (iapp - current[I_NA] - current[I_K] - current[I_M] - current[I_L] - current[I_S]) / CM;
