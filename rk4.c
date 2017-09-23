@@ -4,12 +4,12 @@
 //#include "nlts.h"
 #include <stdio.h>
 #include <math.h>
-#include <malloc.h>
+//#include <malloc.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-#define NN 20
+#define NN 200
 #define N 7
 #define C 5
 #define I_NA 0  
@@ -55,7 +55,7 @@
 #define STARTTIME 0
 #define ENDTIME 4700
 #define STEPSIZE 0.05
-#define DELAY 3.5			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
+#define DELAY 0			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 5 		//number of spikes that are averaged together to give unperturbed period
