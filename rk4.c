@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define NN 200
+#define NN 20
 #define N 7
 #define C 5
 #define I_NA 0  
@@ -71,11 +71,20 @@
 #define DIVNN 1
 #define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
 #define F(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*(1.-(X)/(Y)/2.)) : ((X)/(exp( (X)/ (Y) ) -1)) )
+#define TRYRAD 1
 
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
 double gsyn, tau;
 double iapps[NN];
+
+double dummy() {
+		return 0.;
+	}
+int dummy1(int *n, int *t, int *y, int *ydot) {
+    return 0;
+}
+
 
 void printdarr(double *a, int numelems) {
 	int i;
@@ -381,7 +390,54 @@ int main() {
 		y[0][i] = v[i];
 		
 	}
+	if (TRYRAD) {
+		int n = N * NN;
+		double x = STARTTIME;
+		double y = 0.;
+		double arglag = 0.;
+		double xend = ENDTIME;
+		double h = 0.05;
+		int itol = 0;
+		double rtol[N*NN],atol[N*NN];
+		for(i=0;i<N*NN;i++) {
+			rtol[i]=1.0e-6; //e-8
+            atol[i]=1.0e-9;
+        } //e-11
+		for(j=0;j<NN;j++) {
+			rtol[j*N]=1.0e-8; //e-8
+            atol[j*N]=1.0e-11;
+        } //e-11
+        
+		int ijac=0;
+		double mljac=n;
+		int mujac=0;
+		int nlags = 0;
+		int njacl = 0;
+		int imas = 0;
+		int iout = 0;
+		int lwork = n*(4*n +8) +7;
+		int liwork = 3*n +7;
+		double *work = calloc((lwork + 1), sizeof(double));
+		int *iwork = calloc((liwork + 1), sizeof(int));
+		int rpar = 0;
+		int ipar = 0;
+		int idid = 0;
+		int lgrid = 1;
+		double *grid = malloc(lgrid * sizeof(double));
 
+
+		/*
+		SUBROUTINE RADAR5(N,FCN,PHI,ARGLAG,X,Y,XEND,H, 
+	     &                  RTOL,ATOL,ITOL, 
+	     &                  JAC,IJAC,MLJAC,MUJAC, 
+	     &                  JACLAG,NLAGS,NJACL, 
+	     &                  IMAS,SOLOUT,IOUT, 
+	     &                  WORK,IWORK,RPAR,IPAR,IDID, 
+	     &                  GRID,IPAST,MAS,MLMAS,MUMAS)
+	     */
+		radar5_(&n, derivs, &x, dummy, &arglag, &x, &y, &h, &rtol, &atol, &itol, dummy1, &ijac, &mljac, &mujac, dummy1, &nlags, &njacl, 
+			&imas, dummy1, &iout, work, iwork, &rpar, &ipar, &idid, grid);
+	}
 	for (k = 0; k < nstep; ++k) {
 		
 		if (USE_LOWPROPOFOL && time > LOW_PROPOFOL_START && time < LOW_PROPOFOL_END) {	//changes gsyn to match the correct level of propofol in the simulation
