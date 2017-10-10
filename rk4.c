@@ -1,5 +1,9 @@
 //Runge-Kutta Differential Equation Solver, abc
 
+//Attempting to make a unified solution to combine 2neur and fixtemplate branches
+//Goal = Be able to put in a single set of parameters and run the code once to produce both a PRC and the true simulations
+//Switching between branches as I have it set up currently is tedious and prone to errors. Hopefully this won't be too difficult and will make things much easier.
+
 //#include "nrutil.h"
 //#include "nlts.h"
 #include <stdio.h>
