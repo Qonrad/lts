@@ -15,13 +15,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "defs.h"
-#include "funcs.h"
-
-double current[C];	//external current variable, similar to how Canavier did it
-static double *del;
-double gsyn, tau;
-double iapps[NN];
+#include "defs.h"	//where all of the definitions are
+#include "funcs.h"	//where all of the functions are
 
 int main() {
 	gsyn = G_SYN;
