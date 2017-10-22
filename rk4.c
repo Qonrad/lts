@@ -213,15 +213,200 @@ int main() {
 		return 0;
 	}
 
-
-
 	for (i = 0; i < dsteps; i++) {
 		free(buf[i]);
 	}
 	for (i = 0; i < (nstep + 1); i++) {		
 		free(y[i]);
 	}
-	free(xx);	
+	free(xx);
+
+	//Starting PRC simulation, if requested
+	if (DO_PRC || DO_TRACE) {
+		
+		//Variables to do with delay
+		int dsteps = (int)(DELAY / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
+		double prcbuf[dsteps];
+		del = prcbuf;
+		int bufpos;
+
+		//Variables to do with initial PRC measurements
+		double normalperiod;					//unperturbed period of the oscillation, difference between snd_time and fst_time;
+		int psteps;								//number of steps in the unperturbed period
+		double sptimes[SAMPLESIZE + OFFSET];	//array of times of sp(PRCSKIP) ? ((((double)(k) - (double)(psteps)) - (double)(psteps)) / (double)(psteps)) : ((double)(k) - (double)(psteps))/ (double)(psteps);iking, differences will be averaged to find unperturbed period of oscillation
+		int spikecount = 0;						//holds the location the simulation has reached in sptimes
+		double spdiffs[SAMPLESIZE - 1];			//array of differences in the times of spiking, averaged to find the normalperiod
+		double sumdiffs = 0;					//holds the sum of differences in times of sptimes, used for averaging
+		double periodsd;						//standard deviation of the averaged periods
+
+		//Variables for storing spike snapshot
+		double fthresh = -1.0;					//time at which voltage crosses threshold on the way up
+		double sndthresh = -1.0;				//time at which voltage crosses threshold on the way down
+		Template spike;
+
+		int startstep;
+		fprintf(stderr, "-running preliminary PRC simulation\n");
+
+		//Allocating memory for the storage arrays, checking if I can, so that I don't run out of memory
+		y = (double**) malloc(sizeof(double*) * (nstep + 1));
+		for (i = 0; i < (nstep + 1); i++) {
+			y[i] = (double*) malloc(sizeof(double) * N);
+			if (y[i] == NULL) {
+				fprintf(stderr, "Ran out of memory for storage array at y[%d]", i);
+				return 0;
+			}
+		}
+		xx = (double*) malloc(sizeof(double) * (nstep + 1));
+		if (xx == NULL) {
+			fprintf(stderr, "Ran out of memory for storage array xx]");
+			return 0;
+		} 
+		
+		//Variables to do with conducting prc
+		extern int pertmode;
+		extern double *pert;
+	
+		time = STARTTIME;
+		scan_(v, N, "state.data");				//scanning in initial variables (state variables only)
+
+		fprintf(stderr, "-scanning in first 7 variables of state.data\n");
+		fprintf(stderr, "-this PRC might not be accurate unless the initial conditions in the first 7 are representative of all the others\n"); 
+		
+		for (i = 0; i < (dsteps); ++i) {//sets every double in buffer to be equal to the steady state (initial) voltage that was just scanned in
+			prcbuf[i] = v[0];
+		}
+		
+		prcderivs(time, v, dv, del);
+		
+		prcrk4(v, dv, N, time, STEPSIZE, vout, del);
+		
+		xx[0] = STARTTIME;		
+		for (i = 0; i < N; i++) {
+			v[i] = vout[i]; 
+			y[0][i] = v[i];
+		}
+
+		for (k = 0; k < nstep; k++) {
+			del = &prcbuf[bufpos]; //moves the pointer one step ahead in the buffer
+			prcderivs(time, v, dv, del);
+			prcrk4(v, dv, N, time, STEPSIZE, vout, del);
+			*del = vout[0];
+			
+			if (vout[0] >= THRESHOLD && v[0] < THRESHOLD) {
+				if (spikecount < (SAMPLESIZE + OFFSET)) {
+					if (INTERPOLATE) {
+						sptimes[spikecount] = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+						vout[0] = -50.0; //fudging the interpolated value to the most recent v[0] value so that it exactly matches the spike template
+					}
+					else {
+						sptimes[spikecount] = time;
+					}
+				}
+				++spikecount;			//incremented at the end so it can be used as position in sptimes			
+			}
+			
+			if (spikecount > OFFSET) {	//finding time of threshold crossings for snapshot
+				if (fthresh == -1.0 && vout[0] >= STHRESHOLD && v[0] < STHRESHOLD) {
+					if (INTERPOLATE) {
+						fthresh = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+					}
+					else {
+						fthresh = time;
+					}
+					spike.init[0] = -50.0;
+					printf("Using variables at time %f (interpolated time %f) for start of spike template.\n", time, fthresh);
+					printf("Current state variables, except voltage is interpolated to 0.\n");
+					printdarr(vout, N);
+					startstep = k + 1;
+					
+					for (i = 1; i < N; ++i) {			//puts initial state variables into spike template
+						spike.init[i] = vout[i];
+					}
+					printf("Printing the spike.init array just in case.\n");
+					printdarr(spike.init, N);
+					
+					printf("About to copy buffer and buffer position to template.\n");
+					printf("Buffer array.\n");
+					printdarr(prcbuf, dsteps);
+					printf("bufpos = %f\n", bufpos);
+					
+					for (i = 0; i < dsteps; ++i) {
+						spike.ibuf[i] = prcbuf[i];			//puts initial buffer into spike template
+					}
+					spike.bufpos = bufpos;
+					
+					printf("Done copying. spike.ibuf\n");
+					printdarr(spike.ibuf, dsteps);
+					printf("spike.bufpos = %f\n", spike.bufpos);
+					
+				}
+				else if (fthresh != -1.0 && sndthresh == -1.0 && vout[0] <= STHRESHOLD && v[0] > STHRESHOLD) {
+					if (INTERPOLATE) {
+						sndthresh = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+					}
+					else {
+						sndthresh = time;
+					}
+				}
+			}
+					
+			time += STEPSIZE;
+			xx[k + 1] = time;
+			
+			if (bufpos < dsteps - 1) {	//increments bufpos within the buffer each step
+				bufpos++;
+			}
+			else {
+				bufpos = 0;
+			}
+			
+			for (i = 0; i < N; i++) {
+				v[i] = vout[i];
+				y[k + 1][i] = v[i];
+			}
+		}
+		if (PLONG) {
+			makedata(y, xx, nstep, V, "v.data");
+			makedata(y, xx, nstep, M, "m.data");
+			makedata(y, xx, nstep, H, "h.data");
+			makedata(y, xx, nstep, NV, "n.data");
+			makefull(y, xx, nstep, "low3.5del.data");
+		}
+		else {
+			printf("\n\nSince PLONG == 0, v-n.data are not being written\n\n");
+		}
+		dump_(vout);
+/*
+		printf("This simulation counted %d spikes in all.\n", spikecount);
+		if (spikecount >= (SAMPLESIZE + OFFSET)) {
+			for (i = OFFSET; i < SAMPLESIZE + OFFSET - 1; ++i) {		//calculates differences between spike times to find each period
+				sumdiffs += sptimes[i + 1] - sptimes[i];
+				spdiffs[i - OFFSET] = sptimes[i + 1] - sptimes[i];
+			}
+			printperiod(spdiffs, SAMPLESIZE - 1, "period.data");
+			normalperiod = sumdiffs / (SAMPLESIZE - 1);
+			psteps = (int)round(normalperiod / STEPSIZE);
+			periodsd = calculateSD(spdiffs, SAMPLESIZE - 1);
+			printf("The average unperturbed period is %f, which is approximately %d steps.\n", normalperiod, psteps);
+			printf("The standard deviation is %f.\n", periodsd);
+		}
+		else {
+			fprintf(stderr, "There are not enough spikes to account for sample size and offset or something else has gone wrong.\n");
+			fprintf(stderr, "Killing because it hasn't passed the test of spikecount >= (SAMPLESIZE + OFFSET).\n");
+			fprintf(stderr, "v.data-n.data as well as end.data were still written, but no trace or prc processes occured.\n");
+			return 0;
+		}
+*/
+
+
+
+
+
+
+
+
+
+	}	
 	
 	return 0;
 }
