@@ -4,11 +4,14 @@
 //Goal = Be able to put in a single set of parameters and run the code once to produce both a PRC and the true simulations
 //Switching between branches as I have it set up currently is tedious and prone to errors. Hopefully this won't be too difficult and will make things much easier.
 
+//Command for compiling on macbook
+//gcc-7 rk4.c && ./a.out && python2 all-view2.py 20 full.data
+
 //#include "nrutil.h"
 //#include "nlts.h"
 #include <stdio.h>
 #include <math.h>
-#include <malloc.h>
+//#include <malloc.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
