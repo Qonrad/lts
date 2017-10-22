@@ -228,7 +228,7 @@ int main() {
 		int dsteps = (int)(DELAY / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
 		double prcbuf[dsteps];
 		del = prcbuf;
-		int bufpos;
+		int bufpos = 0;
 
 		//Variables to do with initial PRC measurements
 		double normalperiod;					//unperturbed period of the oscillation, difference between snd_time and fst_time;
@@ -376,7 +376,7 @@ int main() {
 			printf("\n\nSince PLONG == 0, v-n.data are not being written\n\n");
 		}
 		dump_(vout);
-/*
+		
 		printf("This simulation counted %d spikes in all.\n", spikecount);
 		if (spikecount >= (SAMPLESIZE + OFFSET)) {
 			for (i = OFFSET; i < SAMPLESIZE + OFFSET - 1; ++i) {		//calculates differences between spike times to find each period
@@ -396,7 +396,6 @@ int main() {
 			fprintf(stderr, "v.data-n.data as well as end.data were still written, but no trace or prc processes occured.\n");
 			return 0;
 		}
-*/
 
 
 
