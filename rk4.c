@@ -396,8 +396,43 @@ int main() {
 			fprintf(stderr, "v.data-n.data as well as end.data were still written, but no trace or prc processes occured.\n");
 			return 0;
 		}
-
-
+		fprintf(stderr, "fthresh = %f and sndthresh = %f\n", fthresh, sndthresh);
+		
+		
+		//~ makeunpert(y, xx, normalperiod, startstep, 0, 1, "unpertvx.data");
+		
+		
+		
+		snapshot(y, xx, nstep, V, fthresh, sndthresh, &spike);
+		printemp(&spike);
+		
+		if (DO_PRC) {
+			prc(spike, INTERVAL, normalperiod);
+		}
+		if (DO_TRACE) {
+			Phipair test;
+			test.phase = -1.0;
+			fprintf(stderr, "test.fphi1 = %f\n", test.fphi1);
+			pertsim(normalperiod, spike, &test, 1, "unpert");
+			Phipair trace;
+			trace.phase = 0.0;
+			pertsim(normalperiod, spike, &trace, 1, "0");
+			trace.phase = 0.5;
+			pertsim(normalperiod, spike, &trace, 1, "0.5");
+			trace.phase = 0.6;
+			pertsim(normalperiod, spike, &trace, 1, "0.6");
+			
+			test.fphi1 = 0.0;
+			test.fphi2 = 0.0;
+			fprintf(stderr, "test.fphi1 = %f\n", test.fphi1);	
+			fprintf(stderr, "trace.fphi1 = %f\n", trace.fphi1);	
+		}
+		for (i = 0; i < (nstep + 1); i++) {		
+			free(y[i]);
+		}
+		free(xx);	
+		
+		free(spike.volts);
 
 
 
