@@ -31,11 +31,11 @@
 #define I_APP_NEURONS 0		//if I_APP enabled, directs the I_APP to affect neurons 0-I_APP_NEURONS 
 #define I_APP_START 500
 #define I_APP_END 501
-#define USE_LOWPROPOFOL 1	
+#define USE_LOWPROPOFOL 0	
 #define USE_HIGHPROPOFOL 1
 #define LOW_PROPOFOL_START 0.0
-#define LOW_PROPOFOL_END 2000.0
-#define HIGH_PROPOFOL_START 2000.0
+#define LOW_PROPOFOL_END 0000.0
+#define HIGH_PROPOFOL_START 0000.0
 #define HIGH_PROPOFOL_END 5000.0
 #define LOWPROP_GSYN 0.25 //should be 0.25, divided it by 20 instead of using DIVNN to exactly match Carmen's code
 #define LOWPROP_TAU 10
@@ -49,7 +49,7 @@
 #define DELAY 3.5			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
-#define SAMPLESIZE 5 		//number of spikes that are averaged together to give unperturbed period
+#define SAMPLESIZE 50 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 10			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define POPULATION 20		//number of neurons in the whole population
 #define MYCLUSTER 10		//number of neurons in the simulated neuron's population

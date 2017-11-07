@@ -434,8 +434,9 @@ int main() {
 		
 		free(spike.volts);
 
-
-
+		char test[30] = "python2 testline.py";
+		printf("%s\n", test);
+		//system("python2 testline.py prc1.data 3.5 72");
 
 
 
