@@ -4,14 +4,14 @@
 //Goal = Be able to put in a single set of parameters and run the code once to produce both a PRC and the true simulations
 //Switching between branches as I have it set up currently is tedious and prone to errors. Hopefully this won't be too difficult and will make things much easier.
 
-//Command for compiling on macbook
+//Command for compiling and running on macbook
 //gcc-7 rk4.c && ./a.out && python2 all-view2.py 20 full.data
 
-//#include "nrutil.h"
-//#include "nlts.h"
+//Command for compiling and running on beowolf
+//gcc rk4.c -lm && ./a.out && python2 all-view2.py 20 full.data
+
 #include <stdio.h>
 #include <math.h>
-//#include <malloc.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -252,13 +252,13 @@ int main() {
 		for (i = 0; i < (nstep + 1); i++) {
 			y[i] = (double*) malloc(sizeof(double) * N);
 			if (y[i] == NULL) {
-				fprintf(stderr, "Ran out of memory for storage array at y[%d]", i);
+				fprintf(stderr, "Ran out of memory for storage array at y[%d]\n", i);
 				return 0;
 			}
 		}
 		xx = (double*) malloc(sizeof(double) * (nstep + 1));
 		if (xx == NULL) {
-			fprintf(stderr, "Ran out of memory for storage array xx]");
+			fprintf(stderr, "Ran out of memory for storage array xx]\n");
 			return 0;
 		} 
 		
@@ -268,6 +268,9 @@ int main() {
 	
 		time = STARTTIME;
 		scan_(v, N, "state.data");				//scanning in initial variables (state variables only)
+
+		fprintf(stderr, "Here are the starting variables for the single self-connected prc neuron.\n");
+		printdarr(v, N);
 
 		fprintf(stderr, "-scanning in first 7 variables of state.data\n");
 		fprintf(stderr, "-this PRC might not be accurate unless the initial conditions in the first 7 are representative of all the others\n"); 
@@ -437,9 +440,6 @@ int main() {
 		char test[30] = "python2 testline.py";
 		printf("%s\n", test);
 		//system("python2 testline.py prc1.data 3.5 72");
-
-
-
 
 	}	
 	
