@@ -59,8 +59,9 @@
 #define INTERVAL 100
 #define PLONG 1
 #define FULLNAME "lowhigh.data"
-#define DBIT 1
+#define DBIT 0
 #define DIVNN 1
 #define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
 #define F(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*(1.-(X)/(Y)/2.)) : ((X)/(exp( (X)/ (Y) ) -1)) )
 #define PERTENDTIME 5000	//separate endtime for prc stuff in order to differentiate it from main simulation
+#define TESTLINE 1

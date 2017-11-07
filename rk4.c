@@ -245,7 +245,7 @@ int main() {
 		Template spike;
 
 		int startstep;
-		fprintf(stderr, "-running preliminary PRC simulation\n");
+		fprintf(stderr, "\n\n\n\nDoing PRC and/or Trace\n-running preliminary PRC simulation\n");
 
 		//Allocating memory for the storage arrays, checking if I can, so that I don't run out of memory
 		y = (double**) malloc(sizeof(double*) * (nstep + 1));
@@ -318,30 +318,36 @@ int main() {
 					}
 					spike.init[0] = -50.0;
 					printf("Using variables at time %f (interpolated time %f) for start of spike template.\n", time, fthresh);
-					printf("Current state variables, except voltage is interpolated to 0.\n");
-					printdarr(vout, N);
+					if (DBIT) {
+						printf("Current state variables, except voltage is interpolated to 0.\n");
+						printdarr(vout, N);
+					}
 					startstep = k + 1;
 					
 					for (i = 1; i < N; ++i) {			//puts initial state variables into spike template
 						spike.init[i] = vout[i];
 					}
-					printf("Printing the spike.init array just in case.\n");
-					printdarr(spike.init, N);
+					if (DBIT) {
+						printf("Printing the spike.init array just in case.\n");
+						printdarr(spike.init, N);
+					}
 					
 					printf("About to copy buffer and buffer position to template.\n");
-					printf("Buffer array.\n");
-					printdarr(prcbuf, dsteps);
-					printf("bufpos = %f\n", bufpos);
+					if (DBIT) {
+ 						printf("Buffer array.\n");
+						printdarr(prcbuf, dsteps);
+						printf("bufpos = %f\n", bufpos);
+					}
 					
 					for (i = 0; i < dsteps; ++i) {
 						spike.ibuf[i] = prcbuf[i];			//puts initial buffer into spike template
 					}
 					spike.bufpos = bufpos;
-					
-					printf("Done copying. spike.ibuf\n");
-					printdarr(spike.ibuf, dsteps);
-					printf("spike.bufpos = %f\n", spike.bufpos);
-					
+					if (DBIT) {
+						printf("Done copying. spike.ibuf\n");
+						printdarr(spike.ibuf, dsteps);
+						printf("spike.bufpos = %f\n", spike.bufpos);
+					}
 				}
 				else if (fthresh != -1.0 && sndthresh == -1.0 && vout[0] <= STHRESHOLD && v[0] > STHRESHOLD) {
 					if (INTERPOLATE) {
@@ -376,22 +382,22 @@ int main() {
 			makefull(y, xx, nstep, "low3.5del.data");
 		}
 		else {
-			printf("\n\nSince PLONG == 0, v-n.data are not being written\n\n");
+			fprintf(stderr, "\n\nSince PLONG == 0, v-n.data are not being written\n\n");
 		}
 		dump_(vout);
 		
-		printf("This simulation counted %d spikes in all.\n", spikecount);
+		fprintf(stderr, "This simulation counted %d spikes in all.\n", spikecount);
 		if (spikecount >= (SAMPLESIZE + OFFSET)) {
 			for (i = OFFSET; i < SAMPLESIZE + OFFSET - 1; ++i) {		//calculates differences between spike times to find each period
 				sumdiffs += sptimes[i + 1] - sptimes[i];
 				spdiffs[i - OFFSET] = sptimes[i + 1] - sptimes[i];
 			}
-			printperiod(spdiffs, SAMPLESIZE - 1, "period.data");
+			//printperiod(spdiffs, SAMPLESIZE - 1, "period.data");
 			normalperiod = sumdiffs / (SAMPLESIZE - 1);
 			psteps = (int)round(normalperiod / STEPSIZE);
 			periodsd = calculateSD(spdiffs, SAMPLESIZE - 1);
-			printf("The average unperturbed period is %f, which is approximately %d steps.\n", normalperiod, psteps);
-			printf("The standard deviation is %f.\n", periodsd);
+			fprintf(stderr, "The average unperturbed period is %f, which is approximately %d steps.\n", normalperiod, psteps);
+			fprintf(stderr, "The standard deviation is %f.\n", periodsd);
 		}
 		else {
 			fprintf(stderr, "There are not enough spikes to account for sample size and offset or something else has gone wrong.\n");
@@ -415,7 +421,9 @@ int main() {
 		if (DO_TRACE) {
 			Phipair test;
 			test.phase = -1.0;
-			fprintf(stderr, "test.fphi1 = %f\n", test.fphi1);
+			if (DBIT) {
+				fprintf(stderr, "test.fphi1 = %f\n", test.fphi1);
+			}
 			pertsim(normalperiod, spike, &test, 1, "unpert");
 			Phipair trace;
 			trace.phase = 0.0;
@@ -427,8 +435,10 @@ int main() {
 			
 			test.fphi1 = 0.0;
 			test.fphi2 = 0.0;
-			fprintf(stderr, "test.fphi1 = %f\n", test.fphi1);	
-			fprintf(stderr, "trace.fphi1 = %f\n", trace.fphi1);	
+			if (DBIT) {
+				fprintf(stderr, "test.fphi1 = %f\n", test.fphi1);	
+				fprintf(stderr, "trace.fphi1 = %f\n", trace.fphi1);
+			}	
 		}
 		for (i = 0; i < (nstep + 1); i++) {		
 			free(y[i]);
@@ -437,12 +447,12 @@ int main() {
 		
 		free(spike.volts);
 
-		char test[300];
-		sprintf(test, "python2 testline.py prc1.data %f %f", DELAY, normalperiod);
-		fprintf(stderr, "%s\n", test);
-		system(test);
-
+		if (TESTLINE) {
+			char test[300];
+			sprintf(test, "python2 testline.py prc1.data %f %f", DELAY, normalperiod);
+			fprintf(stderr, "%s\n", test);
+			system(test);
+		}
 	}	
-	
 	return 0;
 }

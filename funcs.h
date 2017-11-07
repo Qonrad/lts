@@ -457,7 +457,9 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 	//~ printf("\nBeginning main for loop!\n\n");
 	for (k = 0; k < nstep; k++) {			
 		if (k == targstep && trace->phase >= 0.0) {	//activates perturbation mode if on correct step, allows derivs() to start using the "perturbation synapse" (a [pre-recorded stimulus of the same identical neuron)
-				printf("k = %d\n", k);
+				if (DBIT) {
+					printf("k = %d\n", k);
+				}
 				pertmode = True;
 				flag = True;
 			}
@@ -512,7 +514,9 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 			y[k + 1][i] = v[i];
 		}
 	}
-	printf("targstep = %d\n", targstep);
+	if (DBIT) {
+ 		printf("targstep = %d\n", targstep);
+ 	}
 	if (tracedata) {
 		char a[(int)strlen(tracename) + (int)strlen("*___.data")];
 		sprintf(a, "%sv.data", tracename);
