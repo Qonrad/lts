@@ -437,9 +437,10 @@ int main() {
 		
 		free(spike.volts);
 
-		char test[30] = "python2 testline.py";
-		printf("%s\n", test);
-		//system("python2 testline.py prc1.data 3.5 72");
+		char test[300];
+		sprintf(test, "python2 testline.py prc1.data %f %f", DELAY, normalperiod);
+		fprintf(stderr, "%s\n", test);
+		system(test);
 
 	}	
 	
