@@ -71,7 +71,7 @@ rem = 0
 ax1.plot(v[:,0], v[:,1],"k-")
 ax1.plot(x[idx], y[idx], 'ro')
 ax1.plot(sync, v[:,1][syncnum], 'ro')
-ax1.plot(x, w, "g--")
+ax1.plot(x, w, "g--") #drawing line for basin of attraction
 print "Values where two cluster line intersects with PRC"
 print idx
 
