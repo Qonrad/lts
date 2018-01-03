@@ -13,20 +13,20 @@ period = float(sys.argv[3])
 #~ exit(0)
 
 
-
 x = np.linspace(0., 1., len(v[:,0]))
-for i in range(len(x)):
-	x[i] = round(x[i], 3)
+np.around(x,3)
+#for i in range(len(x)):
+#	x[i] = round(x[i], 3)
 print x # x is basically phi, v[0], and v[1] is basically f(phi)
 y = (2. * x) - 1. - (2. * (delay / period))	#making line for 2-cluster stability
 print y
 print type(y)
 print v
 print type(v)
-z = x + 2 * delay / period
+z = x# + 2 * delay / period
 print z
 print "testing thing"
-# w is storing basin of attraction, formula f(phi) = f(1 - phi + f(phi + 2 * delay / period))
+# w is storing basin of attraction, formula f(phi) = f(1 - phi + f(phi) + 2 * delay / period)
 w = y.copy()
 for i in range(len(x)):
 	#print round(z[i], 2), v[i][0]
@@ -35,17 +35,19 @@ for i in range(len(x)):
 			print round(z[i], 2), "adding", v[j][1], "to w"
 			w[i] = v[j][1]
 print w
-# w should now contain f(phi + 2 * delay / period)
+# w should now contain f(phi)
+w = w + 2 * delay / period
+# w should now contain f(phi) + 2 * delay / period
 w = 1 - x + w
 print w
-# w should now contain 1 - phi + f(phi  + 2 * delay / period)
+# w should now contain 1 - phi + f(phi)  + 2 * delay / period
 for i in range(len(x)):
 	#print round(z[i], 2), v[i][0]
 	for j in range(len(x)):
 		if round(w[i], 2) == v[j][0]:
 			print round(w[i], 2), "adding", v[j][1], "to w"
 			w[i] = v[j][1]
-# w should now contain f(1 - phi + f(phi + 2 * delay / period))
+# w should now contain f(1 - phi + f(phi) + 2 * delay / period)
 sync = round(delay / period, 3)
 print "sync = ", sync
 if sync / 0.002 != 0.0:
