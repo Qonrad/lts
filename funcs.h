@@ -35,8 +35,23 @@ static inline double f(double v, double a, double th, double q) {
 }
 
 void derivs(double time, double *y, double *dydx, double *oldv, double* weight) { 
-	double iapp;
+	double iapp, gsyn, tau;
 	int i, j;
+	
+	if (USE_LOWPROPOFOL) {
+		gsyn = ((time > LOW_PROPOFOL_START && time < LOW_PROPOFOL_END)) ? LOWPROP_GSYN : G_SYN;
+		tau = ((time > LOW_PROPOFOL_START && time < LOW_PROPOFOL_END)) ? LOWPROP_TAU : TAUSYN; 
+	}
+	else if (USE_HIGHPROPOFOL) {
+		gsyn = ((time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END)) ? HIGHPROP_GSYN : G_SYN;
+		tau = ((time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END)) ? HIGHPROP_TAU : TAUSYN;
+	}
+	else {	
+		gsyn = G_SYN;
+		tau = TAUSYN;
+	}
+	
+	//fprintf(stderr, "time = %f, gsyn = %f, tau = %f\n", time, gsyn, tau);
 
 	for (i = 0; i < NN; i++) {
 		

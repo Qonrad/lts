@@ -154,9 +154,7 @@ int main() {
 		}
 	}
 	
-	if (DBIT) {
-		makefull(y, xx, nstep, "full.data");
-	}
+	makefull(y, xx, nstep, "full.data");
 	
 	dump_(vout);
 	if (PLONG) {
@@ -453,6 +451,7 @@ int main() {
 			fprintf(stderr, "%s\n", test);
 			system(test);
 		}
+		fprintf(stderr, "testing testing \n");
 	}	
 	return 0;
 }

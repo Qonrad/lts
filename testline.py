@@ -1,12 +1,31 @@
 import numpy as np
 from matplotlib import pyplot as plt
 import sys
-print "format is python testline.py prc.data delay period"
+print "format is python testline.py prc.data delay period"	
+
 f, ax1= plt.subplots()
 v=np.genfromtxt(sys.argv[1])
 delay = float(sys.argv[2])
 period = float(sys.argv[3])
 
+def prc(phi):
+	"""
+	if phi > 1 or phi < 0:
+		return -1
+	"""
+	idx0 = np.where(v[:,0] < phi)[0][-1]
+	idx1 = idx0 + 1
+	x0 = v[idx0][0]
+	x1 = v[idx1][0]
+	y0 = v[idx0][1]
+	y1 = v[idx1][1]
+	return (y0 * (x1 - phi) + y1 * (phi - x0)) / (x1 - x0)
+
+np.vectorize(prc)
+print "v", v
+print prc(0.512)
+
+#return
 #~ print delay
 #~ print period
 #~ print v[:,0]
@@ -15,41 +34,57 @@ period = float(sys.argv[3])
 
 x = np.linspace(0., 1., len(v[:,0]))
 np.around(x,3)
+print "v.shape = ", v.shape
+print "v", v
+print "v[:,0]", v[:,0]
 #for i in range(len(x)):
 #	x[i] = round(x[i], 3)
-print x # x is basically phi, v[0], and v[1] is basically f(phi)
+print "x", x # x is basically phi, v[0], and v[1] is basically f(phi)
 y = (2. * x) - 1. - (2. * (delay / period))	#making line for 2-cluster stability
 print y
 print type(y)
 print v
 print type(v)
 z = x# + 2 * delay / period
-print z
+#print z
 print "testing thing"
 # w is storing basin of attraction, formula f(phi) = f(1 - phi + f(phi) + 2 * delay / period)
 w = y.copy()
+"""
 for i in range(len(x)):
 	#print round(z[i], 2), v[i][0]
 	for j in range(len(x)):
 		if round(z[i], 2) == v[j][0]:
 			print round(z[i], 2), "adding", v[j][1], "to w"
 			w[i] = v[j][1]
-print w
-# w should now contain f(phi)
+
+print "z", z
+for i in range(len(x)):
+	idx = np.where(v[:,0] < z[i])[0][-1] #idx is an index in v where phi smaller than you need
+
+w = v[idx,1] + (v[idx + 1, 1] - v[idx, 1] * (z[i] - v[idx.0]) / (v[idx + 1,0] - v[idx,0]
+"""
+w = v[:,1] # w should now contain f(phi)
+#print "w", w
 w = w + 2 * delay / period
 # w should now contain f(phi) + 2 * delay / period
 w = 1 - x + w
 print w
 # w should now contain 1 - phi + f(phi)  + 2 * delay / period
+"""
 for i in range(len(x)):
 	#print round(z[i], 2), v[i][0]
 	for j in range(len(x)):
 		if round(w[i], 2) == v[j][0]:
 			print round(w[i], 2), "adding", v[j][1], "to w"
 			w[i] = v[j][1]
+"""
+w = prc(w)
 # w should now contain f(1 - phi + f(phi) + 2 * delay / period)
+print "w done", w
 sync = round(delay / period, 3)
 print "sync = ", sync
+syncnum = -999
 if sync / 0.002 != 0.0:
 	sync = round(sync / 0.002) * 0.002
 	print "sync / 0.002 = ", sync / 0.002
@@ -58,6 +93,8 @@ for i in range(len(v[:,0])):
 	if v[:,0][i] == sync:
 		print "found it"
 		syncnum = i
+if syncnum == -999:
+	print "no synchrony found on prc"
 idx = np.argwhere(np.diff(np.sign(y - v[:,1])) != 0).reshape(-1)
 print "best guess at intersection points"
 print idx
@@ -72,7 +109,8 @@ rem = 0
 	#~ print i, v[:,0][i], y[i], v[:,1][i]
 ax1.plot(v[:,0], v[:,1],"k-")
 ax1.plot(x[idx], y[idx], 'ro')
-ax1.plot(sync, v[:,1][syncnum], 'ro')
+if syncnum != -999:
+	ax1.plot(sync, v[:,1][syncnum], 'ro')
 ax1.plot(x, w, "g--") #drawing line for basin of attraction
 print "Values where two cluster line intersects with PRC"
 print idx
@@ -108,3 +146,4 @@ plt.show()
 #~ y = eval('2x-1')
 #~ plt.plot(x, y)  
 #~ plt.show()
+
