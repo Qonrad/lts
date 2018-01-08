@@ -35,18 +35,17 @@ np.vectorize(linterp)
 
 #calculations
 y = (2. * v[:,0]) - 1. - (2. * (delay / period))									#line for 2-cluster stability
-b = prc(1 - v[:,0] + v[:,1] + 2 * delay / period)									#basin of attraction for antiphase stability
+b = prc(1 - v[:,0] + v[:,1] + 2. * delay / period)									#basin of attraction for antiphase stability
 sync = delay/period																	#x coordinate of the point for synchrony stability
 syncnum = prc(sync)																	#y coordinate of the point for synchrony stability
 intersidx = np.where(np.diff(np.sign(y - v[:,1])) != 0)[0]							#index of array holding line 2-cluster stability immediately BEFORE intersection w/ prc
-inters = linterp((intersidx + intersidx + 1) / 2, intersidx, y[intersidx], intersidx + 1, y[intersidx + 1])
+inters = linterp((intersidx + intersidx + 1) / 2., intersidx, y[intersidx], intersidx + 1, y[intersidx + 1])
 print "line for 2-cluster stability is detected to intersect with prc at these points:\n", inters
 ycut = np.where(y >= np.amin(v[:,1]))[0][0]											#cutting off y so that it doesn't go below the min value of f(phi)
 
-
 #plotting
 ax1.plot(v[:,0], v[:,1],"k-") 														#main prc
-ax1.plot(((intersidx + intersidx + 1) / 2) / (len(y) - 1), inters, 'ro')			#intersection of line for 2-cluster stability with prc
+ax1.plot(((intersidx + intersidx + 1) / 2.) / (len(y) - 1), inters, 'ro')			#intersection of line for 2-cluster stability with prc
 ax1.plot(sync, syncnum, 'ro')														#point of synchrony stability on the prc
 ax1.plot(v[:,0], b, "g--") 															#drawing line for basin of attraction
 ax1.plot(v[ycut:,0], y[ycut:], "r--")												#line for 2-cluster stability
