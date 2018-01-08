@@ -10,8 +10,13 @@ period = float(sys.argv[3])
 
 """
 2do
-implement checking for slope of 2-cluster stability line
 maybe change y to use linspace for input instead of phi? better intersection point?
+I definitely don't think I'm using the best linear interpolation for the instersection
+But everything else should be ok. The basin of attraction is still strange...
+
+make it work with delay 0
+
+also ought to implement system arguments into main code
 """
 def prc(phi):
 	if np.any(phi) > 1 or np.any(phi) < 0:
@@ -31,7 +36,7 @@ def slopeonprc(preidx):
 	x1 = v[:,0][preidx + 1]
 	y0 = v[:,1][preidx]
 	y1 = v[:,1][preidx + 1]
-	return (y1 - y0)/ (x1 - x0)
+	return (y1 - y0) / (x1 - x0)
 np.vectorize(prc)
 np.vectorize(linterp)
 np.vectorize(slopeonprc)
@@ -43,10 +48,18 @@ sync = delay/period																	#x coordinate of the point for synchrony sta
 syncnum = prc(sync)																	#y coordinate of the point for synchrony stability
 intersidx = np.where(np.diff(np.sign(y - v[:,1])) != 0)[0]							#index of array holding line 2-cluster stability immediately BEFORE intersection w/ prc
 inters = linterp((intersidx + intersidx + 1) / 2., intersidx, y[intersidx], intersidx + 1, y[intersidx + 1])
-print "line for 2-cluster stability is detected to intersect with prc at these y-coordinates:\n", inters
+print "line for 2-cluster stability is detected to intersect with prc at these points:\n", np.dstack((v[:,0][intersidx], inters))
 ycut = np.where(y >= np.amin(v[:,1]))[0][0]											#cutting off y so that it doesn't go below the min value of f(phi)
 slope = slopeonprc(intersidx)														#approximate slope of the prc on the point that it intersects with the line for 2-cluster stability
 print "slope of prc where it intersects with line for 2-cluster stability\n", slope
+
+"""
+print np.arange(0, len(v[:,0]) - 1, 1)
+all = slopeonprc(np.arange(0, len(v[:,0]) - 1, 1))
+print "all slopes\n", all
+max = np.amax(all)
+print "max", max
+"""
 
 #plotting
 ax1.plot(v[:,0], v[:,1],"k-") 														#main prc

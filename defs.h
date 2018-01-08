@@ -31,12 +31,12 @@
 #define I_APP_NEURONS 0		//if I_APP enabled, directs the I_APP to affect neurons 0-I_APP_NEURONS 
 #define I_APP_START 500
 #define I_APP_END 501
-#define USE_LOWPROPOFOL 0	
-#define USE_HIGHPROPOFOL 1
+#define USE_LOWPROPOFOL 1	
+#define USE_HIGHPROPOFOL 0
 #define LOW_PROPOFOL_START 0.0
-#define LOW_PROPOFOL_END 0000.0
+#define LOW_PROPOFOL_END 5000.0
 #define HIGH_PROPOFOL_START 0000.0
-#define HIGH_PROPOFOL_END 5000.0
+#define HIGH_PROPOFOL_END 0000.0
 #define LOWPROP_GSYN 0.25 //should be 0.25, divided it by 20 instead of using DIVNN to exactly match Carmen's code
 #define LOWPROP_TAU 10
 #define HIGHPROP_GSYN 0.5
@@ -56,7 +56,7 @@
 #define True 1
 #define False 0
 #define INTERPOLATE 0
-#define INTERVAL 1000
+#define INTERVAL 200
 #define PLONG 1
 #define FULLNAME "lowhigh.data"
 #define DBIT 0
