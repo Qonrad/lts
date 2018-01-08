@@ -10,16 +10,13 @@ period = float(sys.argv[3])
 
 """
 2do
-fix >1 <0 check in prc function
 implement checking for slope of 2-cluster stability line
 maybe change y to use linspace for input instead of phi? better intersection point?
-
 """
 def prc(phi):
-	"""
-	if phi > 1 or phi < 0:
+	if np.any(phi) > 1 or np.any(phi) < 0:
+		print "prc was given values < 0 or > 1"
 		return -1
-	"""
 	idx0 = np.where(v[:,0] < phi)[0][-1]
 	idx1 = idx0 + 1
 	x0 = v[idx0][0]
