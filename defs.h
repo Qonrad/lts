@@ -56,7 +56,7 @@
 #define True 1
 #define False 0
 #define INTERPOLATE 0
-#define INTERVAL 200
+#define INTERVAL 1000
 #define PLONG 1
 #define FULLNAME "lowhigh.data"
 #define DBIT 0

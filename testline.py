@@ -26,9 +26,15 @@ def prc(phi):
 	return (y0 * (x1 - phi) + y1 * (phi - x0)) / (x1 - x0)
 def linterp(x, x0, y0, x1, y1):
 	return (y0 * (x1 - x) + y1 * (x - x0)) / (x1 - x0)
-
+def slopeonprc(preidx):
+	x0 = v[:,0][preidx]
+	x1 = v[:,0][preidx + 1]
+	y0 = v[:,1][preidx]
+	y1 = v[:,1][preidx + 1]
+	return (y1 - y0)/ (x1 - x0)
 np.vectorize(prc)
 np.vectorize(linterp)
+np.vectorize(slopeonprc)
 
 #calculations
 y = (2. * v[:,0]) - 1. - (2. * (delay / period))									#line for 2-cluster stability
@@ -37,8 +43,10 @@ sync = delay/period																	#x coordinate of the point for synchrony sta
 syncnum = prc(sync)																	#y coordinate of the point for synchrony stability
 intersidx = np.where(np.diff(np.sign(y - v[:,1])) != 0)[0]							#index of array holding line 2-cluster stability immediately BEFORE intersection w/ prc
 inters = linterp((intersidx + intersidx + 1) / 2., intersidx, y[intersidx], intersidx + 1, y[intersidx + 1])
-print "line for 2-cluster stability is detected to intersect with prc at these points:\n", inters
+print "line for 2-cluster stability is detected to intersect with prc at these y-coordinates:\n", inters
 ycut = np.where(y >= np.amin(v[:,1]))[0][0]											#cutting off y so that it doesn't go below the min value of f(phi)
+slope = slopeonprc(intersidx)														#approximate slope of the prc on the point that it intersects with the line for 2-cluster stability
+print "slope of prc where it intersects with line for 2-cluster stability\n", slope
 
 #plotting
 ax1.plot(v[:,0], v[:,1],"k-") 														#main prc
