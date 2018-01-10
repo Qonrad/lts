@@ -43,7 +43,7 @@ np.vectorize(slopeonprc)
 
 #calculations
 y = (2. * v[:,0]) - 1. - (2. * (delay / period))									#line for 2-cluster stability
-b = prc(1 - v[:,0] + v[:,1] + 2. * delay / period)									#basin of attraction for antiphase stability
+b = prc(1 - v[:,0] + v[:,1] + 2. * delay / period)									#basin of attraction for unequal time lags
 sync = delay/period																	#x coordinate of the point for synchrony stability
 syncnum = prc(sync)																	#y coordinate of the point for synchrony stability
 intersidx = np.where(np.diff(np.sign(y - v[:,1])) != 0)[0]							#index of array holding line 2-cluster stability immediately BEFORE intersection w/ prc
@@ -65,6 +65,6 @@ print "max", max
 ax1.plot(v[:,0], v[:,1],"k-") 														#main prc
 ax1.plot(((intersidx + intersidx + 1) / 2.) / (len(y) - 1), inters, 'ro')			#intersection of line for 2-cluster stability with prc
 ax1.plot(sync, syncnum, 'ro')														#point of synchrony stability on the prc
-ax1.plot(v[:,0], b, "g--") 															#drawing line for basin of attraction
+ax1.plot(v[:,0], b, "g--") 															#drawing line for basin of attraction for unequal time lags
 ax1.plot(v[ycut:,0], y[ycut:], "r--")												#line for 2-cluster stability
 plt.show()
