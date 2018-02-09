@@ -39,9 +39,11 @@ int main() {
 	if (USE_HIGHPROPOFOL) {
 		fprintf(stderr, "Using High Dose Propofol starting at time %f and ending at %f.\n", HIGH_PROPOFOL_START, HIGH_PROPOFOL_END);
 	}
+	/*
 	fprintf(stderr, "Printing data to file ");
 	fprintf(stderr, FULLNAME);
 	fprintf(stderr, "\n");
+	*/
 
 	//Variables to do with delay
 	int dsteps = (int)(DELAY / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
