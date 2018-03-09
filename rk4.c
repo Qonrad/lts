@@ -44,7 +44,7 @@
 #define STARTTIME 0
 #define ENDTIME 4700
 #define STEPSIZE 0.05
-#define DO_PRC 1			//toggle for prc
+//#define DO_PRC 1			//toggle for prc
 #define DO_TRACE 0			//toggles doing trace for a single (or multiple phase perturbations) but each is recorded individually
 #define DELAY 3.5			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
@@ -691,13 +691,85 @@ void makeunpert(double** y, double *xx, int normalperiod, int startstep, int rea
 	fclose(fp);
 }
 
-const char *argp_program_version = "lts simulation 1.0";
-const char *argp_program_bug_address = "<cleonik@tulane.edu>";
-static char doc[] = "An LTS neuron simulation coded by Conrad Leonik\n";
-static struct argp argp = { 0, 0, 0, doc };
+const char *argp_program_version =
+  "lts simulation 1.0";
+const char *argp_program_bug_address =
+  "<cleonik@tulane.edu>";
+
+/* Program documentation. */
+static char doc[] =
+  "an lts simulation programmed by Conrad Leonik\n";
+
+/* A description of the arguments we accept. */
+static char args_doc[] = "INPUTFILE";
+
+/* The options we understand. */
+static struct argp_option options[] = {
+  {"prc",		'p', "INTERVAL",	0, "Run PRC. Argument is interval." },
+	{ 0 }
+};
+
+/* Used by main to communicate with parse_opt. */
+struct arguments
+{
+  char *args[1];                /* arg1 & arg2 */
+  int prc;
+  int interval;
+};
+
+/* Parse a single option. */
+static error_t
+parse_opt (int key, char *arg, struct argp_state *state)
+{
+  /* Get the input argument from argp_parse, which we
+     know is a pointer to our arguments structure. */
+  struct arguments *arguments = state->input;
+
+  switch (key)
+    {
+    case 'p':
+      arguments->prc = 1;
+      arguments->interval = atoi(arg);
+      break;
+    case ARGP_KEY_ARG:
+      if (state->arg_num >= 1)
+        /* Too many arguments. */
+        argp_usage (state);
+
+      arguments->args[state->arg_num] = arg;
+
+      break;
+
+    case ARGP_KEY_END:
+      if (state->arg_num < 1)
+        /* Not enough arguments. */
+        argp_usage (state);
+      break;
+
+    default:
+      return ARGP_ERR_UNKNOWN;
+    }
+  return 0;
+}
+
+/* Our argp parser. */
+static struct argp argp = { options, parse_opt, args_doc, doc };
 
 int main(int argc, char **argv) {
-	argp_parse (&argp, argc, argv, 0, 0, 0);
+	struct arguments arguments;
+
+  /* Default values. */
+  arguments.prc = 0;
+  arguments.interval = 0;
+
+  /* Parse our arguments; every option seen by parse_opt will
+     be reflected in arguments. */
+  argp_parse (&argp, argc, argv, 0, 0, &arguments);
+
+  printf ("INPUTFILE = %s\nPRC = %s\nINTERVAL = %d\n", arguments.args[0], arguments.prc ? "yes" : "no", arguments.interval);
+	
+	
+	
 	gsyn = G_SYN;
 	tau = TAUSYN;
 	//Variables to do with simulation
@@ -901,7 +973,7 @@ int main(int argc, char **argv) {
 	free(xx);
 
 	//Starting PRC simulation, if requested
-	if (DO_PRC || DO_TRACE) {
+	if (arguments.prc || DO_TRACE) {
 		
 		//Variables to do with delay
 		int dsteps = (int)(DELAY / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
@@ -1094,8 +1166,8 @@ int main(int argc, char **argv) {
 		snapshot(y, xx, nstep, V, fthresh, sndthresh, &spike);
 		printemp(&spike);
 		
-		if (DO_PRC) {
-			prc(spike, INTERVAL, normalperiod);
+		if (arguments.prc) {
+			prc(spike, arguments.interval, normalperiod);
 		}
 		if (DO_TRACE) {
 			Phipair test;
@@ -1132,7 +1204,7 @@ int main(int argc, char **argv) {
 			fprintf(stderr, "%s\n", test);
 			system(test);
 		}
-		fprintf(stderr, "testing testing \n");
+		//fprintf(stderr, "testing testing \n");
 	}	
 	return 0;
 }
