@@ -83,6 +83,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <argp.h>
 //#include "defs.h"	//where all of the definitions are
 //#include "funcs.h"	//where all of the functions are
 
@@ -690,8 +691,13 @@ void makeunpert(double** y, double *xx, int normalperiod, int startstep, int rea
 	fclose(fp);
 }
 
+const char *argp_program_version = "lts simulation 1.0";
+const char *argp_program_bug_address = "<cleonik@tulane.edu>";
+static char doc[] = "An LTS neuron simulation coded by Conrad Leonik\n";
+static struct argp argp = { 0, 0, 0, doc };
 
-int main() {
+int main(int argc, char **argv) {
+	argp_parse (&argp, argc, argv, 0, 0, 0);
 	gsyn = G_SYN;
 	tau = TAUSYN;
 	//Variables to do with simulation
