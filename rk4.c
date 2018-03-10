@@ -74,6 +74,8 @@
 
 //Command for compiling and running on macbook
 //gcc-7 rk4.c && ./a.out && python2 all-view2.py 20 full.data
+//latest update
+//gcc-7 -largp rk4.c -o lts && ./lts state.data --prc 100
 
 //Command for compiling and running on beowolf
 //gcc rk4.c -lm && ./a.out && python2 all-view2.py 20 full.data
@@ -705,7 +707,7 @@ static char args_doc[] = "INPUTFILE";
 
 /* The options we understand. */
 static struct argp_option options[] = {
-  {"prc",		'p', "INTERVAL",	0, "Run PRC. Argument is interval." },
+	{"prc",		'p', "INTERVAL",	0, "Run PRC. Argument is interval." },
 	{ 0 }
 };
 
