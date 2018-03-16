@@ -31,10 +31,10 @@
 #define I_APP_NEURONS 0		//if I_APP enabled, directs the I_APP to affect neurons 0-I_APP_NEURONS 
 #define I_APP_START 500
 #define I_APP_END 501
-#define USE_LOWPROPOFOL 1	
+//#define USE_LOWPROPOFOL 1	
 #define USE_HIGHPROPOFOL 0
-#define LOW_PROPOFOL_START 0.0
-#define LOW_PROPOFOL_END 5000.0
+//#define LOW_PROPOFOL_START 0.0
+//#define LOW_PROPOFOL_END 5000.0
 #define HIGH_PROPOFOL_START 0000.0
 #define HIGH_PROPOFOL_END 0000.0
 #define LOWPROP_GSYN 0.25 //should be 0.25, divided it by 20 instead of using DIVNN to exactly match Carmen's code
@@ -42,7 +42,7 @@
 #define HIGHPROP_GSYN 0.5
 #define HIGHPROP_TAU 20
 #define STARTTIME 0
-#define ENDTIME 4700
+//#define ENDTIME 4700
 #define STEPSIZE 0.05
 //#define DO_PRC 1			//toggle for prc
 #define DO_TRACE 0			//toggles doing trace for a single (or multiple phase perturbations) but each is recorded individually
@@ -98,6 +98,92 @@ static int prcmode;
 static int pertmode;
 double *pert;
 
+
+const char *argp_program_version =
+  "lts simulation 1.0";
+const char *argp_program_bug_address =
+  "<cleonik@tulane.edu>";
+
+/* Program documentation. */
+static char doc[] =
+  "an lts simulation programmed by Conrad Leonik\n";
+
+/* A description of the arguments we accept. */
+static char args_doc[] = "INPUTFILE";
+
+/* The options we understand. */
+static struct argp_option options[] = {
+	{"prc",		'p', "INTERVAL",	0, "Run PRC. Argument is interval." },
+	{"etime",	'e', "ENDTIME",		0, "ENDTIME of main simulation. Default is 5000."},
+	{"lowprop", 'l', "LOW_RANGE",	0, "Use Low-dose Propofol. Mandatory argument is time range eg: 0-5000"},
+	{"highprop",'h', "HIGH_RANGE",	0, "Use High-dose Propofol. Mandatory arguement is time range eg: 0-5000"}, 
+	{ 0 }
+};
+
+/* Used by main to communicate with parse_opt. */
+struct arguments
+{
+  char *args[1];                /* arg1 & arg2 */
+  int prc;
+  int interval;
+  int etime;
+  int lowprop;
+  int lowstart;
+  int lowend;
+  int highprop;
+  int highstart;
+  int highend;
+};
+
+/* Parse a single option. */
+static error_t
+parse_opt (int key, char *arg, struct argp_state *state)
+{
+  /* Get the input argument from argp_parse, which we
+     know is a pointer to our arguments structure. */
+  struct arguments *arguments = state->input;
+
+  switch (key)
+    {
+    case 'p':
+      arguments->prc = 1;
+      arguments->interval = atoi(arg);
+      break;
+    case 'e':
+		arguments->etime = atoi(arg);
+		break;
+	case 'l':
+		arguments->lowprop = 1;
+		range_parser(&(arguments->lowstart), &(arguments->lowend), arg);
+		if (DBIT) {
+			fprintf(stderr, "lowstart = %d. lowend = %d\n", arguments->lowstart, arguments->lowend);
+		}
+		break;
+    case ARGP_KEY_ARG:
+      if (state->arg_num >= 1)
+        /* Too many arguments. */
+        argp_usage (state);
+
+      arguments->args[state->arg_num] = arg;
+
+      break;
+
+    case ARGP_KEY_END:
+      if (state->arg_num < 1)
+        /* Not enough arguments. */
+        argp_usage (state);
+      break;
+
+    default:
+      return ARGP_ERR_UNKNOWN;
+    }
+  return 0;
+}
+
+/* Our argp parser. */
+static struct argp argp = { options, parse_opt, args_doc, doc };
+struct arguments arguments;
+
 typedef struct Phipairs {
 	double phase;
 	double fphi1;
@@ -129,9 +215,9 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 	double iapp, gsyn, tau;
 	int i, j;
 	
-	if (USE_LOWPROPOFOL) {
-		gsyn = ((time > LOW_PROPOFOL_START && time < LOW_PROPOFOL_END)) ? LOWPROP_GSYN : G_SYN;
-		tau = ((time > LOW_PROPOFOL_START && time < LOW_PROPOFOL_END)) ? LOWPROP_TAU : TAUSYN; 
+	if (arguments.lowprop) {
+		gsyn = ((time > arguments.lowstart && time < arguments.lowend)) ? LOWPROP_GSYN : G_SYN;
+		tau = ((time > arguments.lowstart && time < arguments.lowend)) ? LOWPROP_TAU : TAUSYN; 
 	}
 	else if (USE_HIGHPROPOFOL) {
 		gsyn = ((time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END)) ? HIGHPROP_GSYN : G_SYN;
@@ -358,9 +444,9 @@ void prcderivs(double time, double *y, double *dydx, double *oldv) {
 		iapp = I_APP;
 	}
 	
-	if (USE_LOWPROPOFOL) {
-		gsyn = ((time > LOW_PROPOFOL_START && time < LOW_PROPOFOL_END) || prcmode) ? LOWPROP_GSYN : G_SYN;
-		tau = ((time > LOW_PROPOFOL_START && time < LOW_PROPOFOL_END) || prcmode) ? LOWPROP_TAU : TAUSYN; 
+	if (arguments.lowprop) {
+		gsyn = ((time > arguments.lowstart && time < arguments.lowend) || prcmode) ? LOWPROP_GSYN : G_SYN;
+		tau = ((time > arguments.lowstart && time < arguments.lowend) || prcmode) ? LOWPROP_TAU : TAUSYN; 
 	}
 	else if (USE_HIGHPROPOFOL) {
 		gsyn = ((time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END) || prcmode) ? HIGHPROP_GSYN : G_SYN;
@@ -693,76 +779,41 @@ void makeunpert(double** y, double *xx, int normalperiod, int startstep, int rea
 	fclose(fp);
 }
 
-const char *argp_program_version =
-  "lts simulation 1.0";
-const char *argp_program_bug_address =
-  "<cleonik@tulane.edu>";
-
-/* Program documentation. */
-static char doc[] =
-  "an lts simulation programmed by Conrad Leonik\n";
-
-/* A description of the arguments we accept. */
-static char args_doc[] = "INPUTFILE";
-
-/* The options we understand. */
-static struct argp_option options[] = {
-	{"prc",		'p', "INTERVAL",	0, "Run PRC. Argument is interval." },
-	{ 0 }
-};
-
-/* Used by main to communicate with parse_opt. */
-struct arguments
-{
-  char *args[1];                /* arg1 & arg2 */
-  int prc;
-  int interval;
-};
-
-/* Parse a single option. */
-static error_t
-parse_opt (int key, char *arg, struct argp_state *state)
-{
-  /* Get the input argument from argp_parse, which we
-     know is a pointer to our arguments structure. */
-  struct arguments *arguments = state->input;
-
-  switch (key)
-    {
-    case 'p':
-      arguments->prc = 1;
-      arguments->interval = atoi(arg);
-      break;
-    case ARGP_KEY_ARG:
-      if (state->arg_num >= 1)
-        /* Too many arguments. */
-        argp_usage (state);
-
-      arguments->args[state->arg_num] = arg;
-
-      break;
-
-    case ARGP_KEY_END:
-      if (state->arg_num < 1)
-        /* Not enough arguments. */
-        argp_usage (state);
-      break;
-
-    default:
-      return ARGP_ERR_UNKNOWN;
-    }
-  return 0;
+void range_parser(int *start, int *end, const char *range) {
+	char input[21];
+	int i;
+	char s[10];
+	char e[10];
+	strcpy(input, range);
+	int len = strlen(range);
+	for (i = 0; i < len; ++i) {
+		if (input[i] == '-') {
+			strcpy(e, &input[i + 1]);
+			input[i] = '\0';
+			strcpy(s, input);
+			printf("%s\n", s);
+			printf("%s\n", e);
+			*start = atoi(s);
+			*end = atoi(e);
+			return;
+		}
+	}
+	fprintf(stderr, "range could not be parsed. no '-' character was found\nenter ./lts --help for more information\n");
+	exit(1);
+	return;
 }
 
-/* Our argp parser. */
-static struct argp argp = { options, parse_opt, args_doc, doc };
 
 int main(int argc, char **argv) {
-	struct arguments arguments;
+	
 
   /* Default values. */
   arguments.prc = 0;
   arguments.interval = 0;
+  arguments.etime = 5000;
+  arguments.lowprop = 0;
+  arguments.lowstart = 0;
+  arguments.lowend = 0;
 
   /* Parse our arguments; every option seen by parse_opt will
      be reflected in arguments. */
@@ -775,7 +826,7 @@ int main(int argc, char **argv) {
 	gsyn = G_SYN;
 	tau = TAUSYN;
 	//Variables to do with simulation
-	long int nstep = (ENDTIME - STARTTIME) / STEPSIZE;	// This assumes the endtime-starttime is evenly divisible by the stepsize, which should always be true I think
+	long int nstep = (arguments.etime - STARTTIME) / STEPSIZE;	// This assumes the endtime-starttime is evenly divisible by the stepsize, which should always be true I think
 	fprintf(stderr, "The initial simulation will contain %d steps.\n", nstep);
 	int i, j, k, pre;
 	double time;
@@ -786,11 +837,11 @@ int main(int argc, char **argv) {
 	scan_(weight, NN*NN, "weights.data");
 	
 	fprintf(stderr, "DELAY = %fms.\n", DELAY);
-	if (USE_LOWPROPOFOL) {
-		fprintf(stderr, "Using Low Dose Propofol starting at time %f and ending at %f.\n", LOW_PROPOFOL_START, LOW_PROPOFOL_END);
+	if (arguments.lowprop) {
+		fprintf(stderr, "Using Low Dose Propofol starting at time %d and ending at %d.\n", arguments.lowstart, arguments.lowend);
 	}
 	if (USE_HIGHPROPOFOL) {
-		fprintf(stderr, "Using High Dose Propofol starting at time %f and ending at %f.\n", HIGH_PROPOFOL_START, HIGH_PROPOFOL_END);
+		fprintf(stderr, "Using High Dose Propofol starting at time %d and ending at %d.\n", HIGH_PROPOFOL_START, HIGH_PROPOFOL_END);
 	}
 	/*
 	fprintf(stderr, "Printing data to file ");
@@ -862,9 +913,9 @@ int main(int argc, char **argv) {
 
 	for (k = 0; k < nstep; ++k) {
 		
-		if (USE_LOWPROPOFOL && time > LOW_PROPOFOL_START && time < LOW_PROPOFOL_END) {	//changes gsyn to match the correct level of propofol in the simulation
-			gsyn = (time > LOW_PROPOFOL_START && time < LOW_PROPOFOL_END) ? LOWPROP_GSYN : G_SYN; 
-			tau  = (time > LOW_PROPOFOL_START && time < LOW_PROPOFOL_END) ? LOWPROP_TAU : TAUSYN; 
+		if (arguments.lowprop && time > arguments.lowstart && time < arguments.lowend) {	//changes gsyn to match the correct level of propofol in the simulation
+			gsyn = (time > arguments.lowstart && time < arguments.lowend) ? LOWPROP_GSYN : G_SYN; 
+			tau  = (time > arguments.lowstart && time < arguments.lowend) ? LOWPROP_TAU : TAUSYN; 
 		}
 		else if (USE_HIGHPROPOFOL && time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END) {
 			gsyn = (time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END) ? HIGHPROP_GSYN : G_SYN;
