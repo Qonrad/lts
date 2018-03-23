@@ -136,52 +136,50 @@ parse_opt (int key, char *arg, struct argp_state *state)
 {
   /* Get the input argument from argp_parse, which we
      know is a pointer to our arguments structure. */
-  struct arguments *arguments = state->input;
+	struct arguments *arguments = state->input;
 
-  switch (key)
-    {
-	case 'd':
-		arguments->delay = atof(arg);
-		break;
-    case 'p':
-      arguments->prc = 1;
-      arguments->interval = atoi(arg);
-      break;
-    case 'e':
-		arguments->etime = atoi(arg);
-		break;
-	case 'h':
-		arguments->highprop = 1;
-		range_parser(&(arguments->highstart), &(arguments->highend), arg);
-		break;
-	case 's':
-		arguments->stepsize = atof(arg);
-		break;
-	case 'l':
-		arguments->lowprop = 1;
-		range_parser(&(arguments->lowstart), &(arguments->lowend), arg);
-		if (DBIT) {
-			fprintf(stderr, "lowstart = %d. lowend = %d\n", arguments->lowstart, arguments->lowend);
-		}
-		break;
-    case ARGP_KEY_ARG:
-      if (state->arg_num >= 1)
-        /* Too many arguments. */
-        argp_usage (state);
+	switch (key) {
+		case 'd':
+			arguments->delay = atof(arg);
+			break;
+		case 'p':
+			arguments->prc = 1;
+			arguments->interval = atoi(arg);
+			break;
+		case 'e':
+			arguments->etime = atoi(arg);
+			break;
+		case 'h':
+			arguments->highprop = 1;
+			range_parser(&(arguments->highstart), &(arguments->highend), arg);
+			break;
+		case 's':
+			arguments->stepsize = atof(arg);
+			break;
+		case 'l':
+			arguments->lowprop = 1;
+			range_parser(&(arguments->lowstart), &(arguments->lowend), arg);
+			if (DBIT) {
+				fprintf(stderr, "lowstart = %d. lowend = %d\n", arguments->lowstart, arguments->lowend);
+			}
+			break;
+		case ARGP_KEY_ARG:
+			if (state->arg_num >= 1)
+			/* Too many arguments. */
+			argp_usage (state);
 
-      arguments->args[state->arg_num] = arg;
+			arguments->args[state->arg_num] = arg;
+			break;
 
-      break;
+		case ARGP_KEY_END:
+			if (state->arg_num < 1)
+				/* Not enough arguments. */
+				argp_usage (state);
+			break;
 
-    case ARGP_KEY_END:
-      if (state->arg_num < 1)
-        /* Not enough arguments. */
-        argp_usage (state);
-      break;
-
-    default:
-      return ARGP_ERR_UNKNOWN;
-    }
+		default:
+			return ARGP_ERR_UNKNOWN;
+	}
   return 0;
 }
 
@@ -816,24 +814,24 @@ void range_parser(int *start, int *end, const char *range) {
 int main(int argc, char **argv) {
 	
 
-  /* Default values. */
-  arguments.prc = 0;
-  arguments.interval = 0;
-  arguments.etime = 5000;
-  arguments.lowprop = 0;
-  arguments.lowstart = 0;
-  arguments.lowend = 0;
-  arguments.highprop = 0;
-  arguments.highstart = 0;
-  arguments.highend = 0;
-  arguments.delay = 0;
-  arguments.stepsize = 0.05;
+	/* Default values. */
+	arguments.prc = 0;
+	arguments.interval = 0;
+	arguments.etime = 5000;
+	arguments.lowprop = 0;
+	arguments.lowstart = 0;
+	arguments.lowend = 0;
+	arguments.highprop = 0;
+	arguments.highstart = 0;
+	arguments.highend = 0;
+	arguments.delay = 0;
+	arguments.stepsize = 0.05;
 
-  /* Parse our arguments; every option seen by parse_opt will
-     be reflected in arguments. */
-  argp_parse (&argp, argc, argv, 0, 0, &arguments);
+	/* Parse our arguments; every option seen by parse_opt will
+	be reflected in arguments. */
+	argp_parse (&argp, argc, argv, 0, 0, &arguments);
 
-  printf ("INPUTFILE = %s\nPRC = %s\nINTERVAL = %d\n", arguments.args[0], arguments.prc ? "yes" : "no", arguments.interval);
+	printf ("INPUTFILE = %s\nPRC = %s\nINTERVAL = %d\n", arguments.args[0], arguments.prc ? "yes" : "no", arguments.interval);
 	
 	
 	
