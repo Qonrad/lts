@@ -36,9 +36,8 @@
 #define HIGHPROP_GSYN 0.5
 #define HIGHPROP_TAU 20
 #define STARTTIME 0
-#define STEPSIZE 0.05
+//#define STEPSIZE 0.05
 #define DO_TRACE 0			//toggles doing trace for a single (or multiple phase perturbations) but each is recorded individually
-//#define DELAY 3.5			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 50 		//number of spikes that are averaged together to give unperturbed period
@@ -109,7 +108,8 @@ static struct argp_option options[] = {
 	{"etime",	'e', "ENDTIME",		0, "ENDTIME of main simulation. Default is 5000."},
 	{"lowprop", 'l', "LOW_RANGE",	0, "Use Low-dose Propofol. Mandatory argument is time range eg: 0-5000"},
 	{"highprop",'h', "HIGH_RANGE",	0, "Use High-dose Propofol. Mandatory arguement is time range eg: 0-5000"},
-	{"delay",	'd', "DELAY",		0, "synaptic delay of lts neurons. default is 0."}, 
+	{"delay",	'd', "DELAY",		0, "synaptic delay of lts neurons. default is 0, must evenly divide stepsize"},
+	{"stepsize", 's', "STEPSIZE",	0, "size in ms of each step of the simulation, must be evenly divided by the delay if there is one"}, 
 	{ 0 }
 };
 
@@ -127,6 +127,7 @@ struct arguments
   int highstart;
   int highend;
   double delay;
+  double stepsize;
 };
 
 /* Parse a single option. */
@@ -152,6 +153,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	case 'h':
 		arguments->highprop = 1;
 		range_parser(&(arguments->highstart), &(arguments->highend), arg);
+		break;
+	case 's':
+		arguments->stepsize = atof(arg);
 		break;
 	case 'l':
 		arguments->lowprop = 1;
@@ -252,7 +256,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		current[I_L] =  G_L * (y[V + (N * i)] - E_L);
 		
 		current[I_S] = 0.0;
-		if (arguments.delay >= STEPSIZE) {
+		if (arguments.delay >= arguments.stepsize) {
 			for (j = 0; j < NN; ++j) {
 				current[I_S] += weight[j + (i * NN)] * oldv[j]; //sums up products of weight and presynaptic y[S]
 			}
@@ -474,7 +478,7 @@ void prcderivs(double time, double *y, double *dydx, double *oldv) {
 	dydx[NV] = ((0.032) * G((y[V] + 52), -5.) * (1. - y[NV])) - (0.5 * exp(-(y[V] + 57.) / 40.) * y[NV]); 
 	dydx[MN] = ((3.209 * 0.0001) * G((y[V] + 30), -9.)  * (1.0 - y[MN])) + ((3.209 * 0.0001) * G((y[V] + 30), 9.) * y[MN]);
 	
-	if (arguments.delay >= STEPSIZE) {
+	if (arguments.delay >= arguments.stepsize) {
 		dydx[S] = 2 * (1 + tanh(*oldv / 4.0)) * (1 - y[S]) - y[S] / tau; //uses *oldv which should be del, the delay pointer in the buffer
 	}
 	else {
@@ -531,7 +535,7 @@ void prcrk4(double y[], double dydx[], int n, double x, double h, double yout[],
 }
 
 void snapshot(double** y, double *xx, int nstep, int var, double timestart, double timestop, Template *temp) {
-	temp->steps = (int)(round((timestop - timestart) / STEPSIZE));
+	temp->steps = (int)(round((timestop - timestart) / arguments.stepsize));
 	temp->volts = (double*) malloc(sizeof(double) * temp->steps);
 	int i, place = 0;
 	if (var == V) {
@@ -563,7 +567,7 @@ void printemp(Template *temp) {//will cause an error if the template doesn't hav
 	fprintf(stderr, "Initial array of state variables\n");
 	printdarr(temp->init, N);
 	fprintf(stderr, "Initial array of buffer\n");
-	printdarr(temp->ibuf, (int)(arguments.delay / STEPSIZE));
+	printdarr(temp->ibuf, (int)(arguments.delay / arguments.stepsize));
 	
 }
 
@@ -592,13 +596,13 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 	extern double current[];				//external variable declaration
 	
 	//Variables to do with delay
-	int dsteps = (int)(arguments.delay / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
+	int dsteps = (int)(arguments.delay / arguments.stepsize);	//number of steps in the delay (i.e. number of elements in the buffer)
 	double buf[dsteps];
 	del = buf;
 	int bufpos;
 	
-	psteps = (int)round(normalperiod / STEPSIZE);
-	nstep = (int)round((5.0 * normalperiod) / STEPSIZE);
+	psteps = (int)round(normalperiod / arguments.stepsize);
+	nstep = (int)round((5.0 * normalperiod) / arguments.stepsize);
 	
 	//Allocating memory for the storage arrays, checking if I can, so that I don't run out of memory
 	y = (double**) malloc(sizeof(double*) * (nstep + 1));
@@ -631,7 +635,7 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 	//~ printf("\n\n\n\nAttempting to use template within pertsim!\n");
 	//~ printemp(&spike);
 	copyab(spike.init, v, N);
-	copyab(spike.ibuf, buf, (int)(arguments.delay / STEPSIZE));
+	copyab(spike.ibuf, buf, (int)(arguments.delay / arguments.stepsize));
 	bufpos = spike.bufpos;
 	del = &buf[bufpos]; //moves the pointer to the correct initial position in the buffer, unnecessary i believe
 	pert = spike.volts;
@@ -639,7 +643,7 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 	//~ printf("Template successfully initiated!\n");
 	
 	prcderivs(time, v, dv, del);	//does running this one effect the phase/ perturbation? I don't think so but I'm not sure.
-	prcrk4(v, dv, N, time, STEPSIZE, vout, del);
+	prcrk4(v, dv, N, time, arguments.stepsize, vout, del);
 	
 	xx[0] = time;
 	for (i = 0; i < N; i++) {
@@ -658,10 +662,10 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 			}
 		del = &buf[bufpos]; //moves the pointer one step ahead in the buffer
 		prcderivs(time, v, dv, del);
-		prcrk4(v, dv, N, time, STEPSIZE, vout, del);
+		prcrk4(v, dv, N, time, arguments.stepsize, vout, del);
 		*del = vout[0];
 				
-		time += STEPSIZE;
+		time += arguments.stepsize;
 		xx[k + 1] = time;
 		
 		if (bufpos < dsteps - 1) {	//increments bufpos within the buffer each step
@@ -682,7 +686,7 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 		if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 == 0.0 && trace->phase >= 0.0) {
 				
 				if (INTERPOLATE) {
-					flag1 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+					flag1 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - arguments.stepsize))) + (time - arguments.stepsize);
 					trace->fphi1 = ((double)(flag1) - (double)(normalperiod)) / (double)(normalperiod);
 					printf("The trace was done at phase %f. The step targeted was %d (time of flag1= %f), and the total number of steps in the unperturbed period was %d (%f ms).\n", trace->phase, targstep, time, psteps, normalperiod);
 					printf("f(phi)1 is %f.\n", trace->fphi1);
@@ -694,7 +698,7 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 			}
 		else if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 != 0.0 && flag2 == 0.0) {
 				if (INTERPOLATE) {
-					flag2 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+					flag2 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - arguments.stepsize))) + (time - arguments.stepsize);
 					trace->fphi2 = ((double)(flag2) - (double)(flag1) - (double)(normalperiod))/ (double)(normalperiod);
 				}
 				else {
@@ -736,7 +740,7 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 }
 
 void template_init(Template *temp) {
-	temp->ibuf = malloc(sizeof(double) * ((int)(arguments.delay / STEPSIZE)));
+	temp->ibuf = malloc(sizeof(double) * ((int)(arguments.delay / arguments.stepsize)));
 }
 
 void prc(Template spike, int interval, double normalperiod) {
@@ -752,7 +756,7 @@ void prc(Template spike, int interval, double normalperiod) {
 
 void makeunpert(double** y, double *xx, int normalperiod, int startstep, int realtime, int full, const char *filename) {
 	int i, psteps, x;
-	psteps = (int)round(normalperiod / STEPSIZE);
+	psteps = (int)round(normalperiod / arguments.stepsize);
 	FILE *fopen(),*fp;
 	fp = fopen(filename, "w");
 	if (realtime) {
@@ -823,6 +827,7 @@ int main(int argc, char **argv) {
   arguments.highstart = 0;
   arguments.highend = 0;
   arguments.delay = 0;
+  arguments.stepsize = 0.05;
 
   /* Parse our arguments; every option seen by parse_opt will
      be reflected in arguments. */
@@ -835,7 +840,7 @@ int main(int argc, char **argv) {
 	gsyn = G_SYN;
 	tau = TAUSYN;
 	//Variables to do with simulation
-	long int nstep = (arguments.etime - STARTTIME) / STEPSIZE;	// This assumes the endtime-starttime is evenly divisible by the stepsize, which should always be true I think
+	long int nstep = (arguments.etime - STARTTIME) / arguments.stepsize;	// This assumes the endtime-starttime is evenly divisible by the stepsize, which should always be true I think
 	fprintf(stderr, "The initial simulation will contain %d steps.\n", nstep);
 	int i, j, k, pre;
 	double time;
@@ -859,7 +864,7 @@ int main(int argc, char **argv) {
 	*/
 
 	//Variables to do with delay
-	int dsteps = (int)(arguments.delay / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
+	int dsteps = (int)(arguments.delay / arguments.stepsize);	//number of steps in the delay (i.e. number of elements in the buffer)
 	double* buf[dsteps];
 	for (i = 0; i < dsteps; ++i) {
 		buf[i] = (double*) malloc(sizeof(double) * NN);		//allocates memory for an array of arrays, length depending on the number of neurons in the simulation
@@ -895,7 +900,7 @@ int main(int argc, char **argv) {
 	time = STARTTIME;
 	scan_(v, N*NN, "state.data");				//scanning in initial variables (state variables only) 
 
-	if (arguments.delay >= STEPSIZE) {
+	if (arguments.delay >= arguments.stepsize) {
 		for (i = 0; i < (dsteps); ++i) {//sets every double in buffer(s) to be equal to 0
 			for (j = 0; j < NN; ++j) {
 					buf[i][j] = 0.0;
@@ -910,7 +915,7 @@ int main(int argc, char **argv) {
 	}
 	
 	derivs(time, v, dv, del, weight);
-	rk4(v, dv, (N * NN), time, STEPSIZE, vout, del, weight);
+	rk4(v, dv, (N * NN), time, arguments.stepsize, vout, del, weight);
 	
 	
 	xx[0] = STARTTIME;		
@@ -937,9 +942,9 @@ int main(int argc, char **argv) {
 		
 		del = buf[bufpos]; //moves the pointer one step ahead in the buffer
 		derivs(time, v, dv, del, weight);										//actually does the step
-		rk4(v, dv, (N * NN), time, STEPSIZE, vout, del, weight);				//actually does the step
+		rk4(v, dv, (N * NN), time, arguments.stepsize, vout, del, weight);				//actually does the step
 		
-		if (arguments.delay >= STEPSIZE) {
+		if (arguments.delay >= arguments.stepsize) {
 			for (j = 0; j < NN; ++j) {								
 				del[j] = vout[S + (N * j)];							//dereferences the delay pointer, and puts the previous y[S] in the same spot
 			}
@@ -947,7 +952,7 @@ int main(int argc, char **argv) {
 		if (vout[0] >= THRESHOLD && v[0] < THRESHOLD) {
 			if (spikecount < (SAMPLESIZE + OFFSET)) {
 				if (INTERPOLATE) {
-					sptimes[spikecount] = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+					sptimes[spikecount] = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - arguments.stepsize))) + (time - arguments.stepsize);
 				}
 				else {
 					sptimes[spikecount] = time;
@@ -956,10 +961,10 @@ int main(int argc, char **argv) {
 			++spikecount;			//incremented at the end so it can be used as position in sptimes			
 		}
 		
-		time += STEPSIZE;
+		time += arguments.stepsize;
 		xx[k + 1] = time;
 		
-		if (arguments.delay >= STEPSIZE) {
+		if (arguments.delay >= arguments.stepsize) {
 			bufpos = (++bufpos)%dsteps;
 		}
 		
@@ -1014,7 +1019,7 @@ int main(int argc, char **argv) {
 		}
 		printperiod(spdiffs, SAMPLESIZE - 1, "period.data");
 		normalperiod = sumdiffs / (SAMPLESIZE - 1);
-		psteps = (int)round(normalperiod / STEPSIZE);
+		psteps = (int)round(normalperiod / arguments.stepsize);
 		periodsd = calculateSD(spdiffs, SAMPLESIZE - 1);
 		fprintf(stderr, "The average unperturbed period is %f, which is approximately %d steps.\n", normalperiod, psteps);
 		fprintf(stderr, "The standard deviation is %f.\n", periodsd);
@@ -1038,7 +1043,7 @@ int main(int argc, char **argv) {
 	if (arguments.prc || DO_TRACE) {
 		
 		//Variables to do with delay
-		int dsteps = (int)(arguments.delay / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
+		int dsteps = (int)(arguments.delay / arguments.stepsize);	//number of steps in the delay (i.e. number of elements in the buffer)
 		double prcbuf[dsteps];
 		del = prcbuf;
 		int bufpos = 0;
@@ -1095,7 +1100,7 @@ int main(int argc, char **argv) {
 		
 		prcderivs(time, v, dv, del);
 		
-		prcrk4(v, dv, N, time, STEPSIZE, vout, del);
+		prcrk4(v, dv, N, time, arguments.stepsize, vout, del);
 		
 		xx[0] = STARTTIME;		
 		for (i = 0; i < N; i++) {
@@ -1106,13 +1111,13 @@ int main(int argc, char **argv) {
 		for (k = 0; k < nstep; k++) {
 			del = &prcbuf[bufpos]; //moves the pointer one step ahead in the buffer
 			prcderivs(time, v, dv, del);
-			prcrk4(v, dv, N, time, STEPSIZE, vout, del);
+			prcrk4(v, dv, N, time, arguments.stepsize, vout, del);
 			*del = vout[0];
 			
 			if (vout[0] >= THRESHOLD && v[0] < THRESHOLD) {
 				if (spikecount < (SAMPLESIZE + OFFSET)) {
 					if (INTERPOLATE) {
-						sptimes[spikecount] = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+						sptimes[spikecount] = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - arguments.stepsize))) + (time - arguments.stepsize);
 						vout[0] = -50.0; //fudging the interpolated value to the most recent v[0] value so that it exactly matches the spike template
 					}
 					else {
@@ -1125,7 +1130,7 @@ int main(int argc, char **argv) {
 			if (spikecount > OFFSET) {	//finding time of threshold crossings for snapshot
 				if (fthresh == -1.0 && vout[0] >= STHRESHOLD && v[0] < STHRESHOLD) {
 					if (INTERPOLATE) {
-						fthresh = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+						fthresh = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - arguments.stepsize))) + (time - arguments.stepsize);
 					}
 					else {
 						fthresh = time;
@@ -1165,7 +1170,7 @@ int main(int argc, char **argv) {
 				}
 				else if (fthresh != -1.0 && sndthresh == -1.0 && vout[0] <= STHRESHOLD && v[0] > STHRESHOLD) {
 					if (INTERPOLATE) {
-						sndthresh = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - STEPSIZE))) + (time - STEPSIZE);
+						sndthresh = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - arguments.stepsize))) + (time - arguments.stepsize);
 					}
 					else {
 						sndthresh = time;
@@ -1173,7 +1178,7 @@ int main(int argc, char **argv) {
 				}
 			}
 					
-			time += STEPSIZE;
+			time += arguments.stepsize;
 			xx[k + 1] = time;
 			
 			if (bufpos < dsteps - 1) {	//increments bufpos within the buffer each step
@@ -1208,7 +1213,7 @@ int main(int argc, char **argv) {
 			}
 			//printperiod(spdiffs, SAMPLESIZE - 1, "period.data");
 			normalperiod = sumdiffs / (SAMPLESIZE - 1);
-			psteps = (int)round(normalperiod / STEPSIZE);
+			psteps = (int)round(normalperiod / arguments.stepsize);
 			periodsd = calculateSD(spdiffs, SAMPLESIZE - 1);
 			fprintf(stderr, "The average unperturbed period is %f, which is approximately %d steps.\n", normalperiod, psteps);
 			fprintf(stderr, "The standard deviation is %f.\n", periodsd);

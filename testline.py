@@ -48,9 +48,12 @@ np.vectorize(slopeonprc)
 
 #calculations
 y = (2. * v[:,0]) - 1. - (2. * (delay / period))									#line for 2-cluster stability
-bu = prc(1 - v[:,0] + v[:,1] + 2. * delay / period)									#basin of attraction for unequal time lags, formula f(1 - phi + f(phi) + 2 * delay / period 
+bu = prc(1 - v[:,0] + v[:,1] + 2. * delay / period)									#basin of attraction for unequal time lags, formula f(1 - phi + f(phi) + 2 * delay / period
 sync = delay/period																	#x coordinate of the point for synchrony stability
-syncnum = prc(sync)																	#y coordinate of the point for synchrony stability
+if delay != 0: 
+	syncnum = prc(sync)																#y coordinate of the point for synchrony stability
+else:
+	syncnum = v[0][1]
 intersidx = np.where(np.diff(np.sign(y - v[:,1])) != 0)[0]							#index of array holding line 2-cluster stability immediately BEFORE intersection w/ prc
 inters = linterp((intersidx + intersidx + 1) / 2., intersidx, y[intersidx], intersidx + 1, y[intersidx + 1])
 print "line for 2-cluster stability is detected to intersect with prc at these points:\n", np.dstack((v[:,0][intersidx], inters))
