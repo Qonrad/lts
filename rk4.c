@@ -31,22 +31,14 @@
 #define I_APP_NEURONS 0		//if I_APP enabled, directs the I_APP to affect neurons 0-I_APP_NEURONS 
 #define I_APP_START 500
 #define I_APP_END 501
-//#define USE_LOWPROPOFOL 1	
-//#define USE_HIGHPROPOFOL 0
-//#define LOW_PROPOFOL_START 0.0
-//#define LOW_PROPOFOL_END 5000.0
-//#define HIGH_PROPOFOL_START 0000.0
-//#define HIGH_PROPOFOL_END 0000.0
 #define LOWPROP_GSYN 0.25 //should be 0.25, divided it by 20 instead of using DIVNN to exactly match Carmen's code
 #define LOWPROP_TAU 10
 #define HIGHPROP_GSYN 0.5
 #define HIGHPROP_TAU 20
 #define STARTTIME 0
-//#define ENDTIME 4700
 #define STEPSIZE 0.05
-//#define DO_PRC 1			//toggle for prc
 #define DO_TRACE 0			//toggles doing trace for a single (or multiple phase perturbations) but each is recorded individually
-#define DELAY 3.5			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
+//#define DELAY 3.5			//delay must evenly divide stepsize, and it is only used if it is >= stepsize
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 50 		//number of spikes that are averaged together to give unperturbed period
@@ -116,7 +108,8 @@ static struct argp_option options[] = {
 	{"prc",		'p', "INTERVAL",	0, "Run PRC. Argument is interval." },
 	{"etime",	'e', "ENDTIME",		0, "ENDTIME of main simulation. Default is 5000."},
 	{"lowprop", 'l', "LOW_RANGE",	0, "Use Low-dose Propofol. Mandatory argument is time range eg: 0-5000"},
-	{"highprop",'h', "HIGH_RANGE",	0, "Use High-dose Propofol. Mandatory arguement is time range eg: 0-5000"}, 
+	{"highprop",'h', "HIGH_RANGE",	0, "Use High-dose Propofol. Mandatory arguement is time range eg: 0-5000"},
+	{"delay",	'd', "DELAY",		0, "synaptic delay of lts neurons. default is 0."}, 
 	{ 0 }
 };
 
@@ -133,6 +126,7 @@ struct arguments
   int highprop;
   int highstart;
   int highend;
+  double delay;
 };
 
 /* Parse a single option. */
@@ -145,6 +139,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
   switch (key)
     {
+	case 'd':
+		arguments->delay = atof(arg);
+		break;
     case 'p':
       arguments->prc = 1;
       arguments->interval = atoi(arg);
@@ -198,8 +195,8 @@ typedef struct Templates {
 	int steps;
 	double *volts;
 	double init[N];
-	double ibuf[(int)(DELAY / STEPSIZE)];
 	int bufpos;
+	double *ibuf;//[(int)(arguments.delay / STEPSIZE)];
 } Template;
 
 void printdarr(double *a, int numelems) {
@@ -255,7 +252,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		current[I_L] =  G_L * (y[V + (N * i)] - E_L);
 		
 		current[I_S] = 0.0;
-		if (DELAY >= STEPSIZE) {
+		if (arguments.delay >= STEPSIZE) {
 			for (j = 0; j < NN; ++j) {
 				current[I_S] += weight[j + (i * NN)] * oldv[j]; //sums up products of weight and presynaptic y[S]
 			}
@@ -477,7 +474,7 @@ void prcderivs(double time, double *y, double *dydx, double *oldv) {
 	dydx[NV] = ((0.032) * G((y[V] + 52), -5.) * (1. - y[NV])) - (0.5 * exp(-(y[V] + 57.) / 40.) * y[NV]); 
 	dydx[MN] = ((3.209 * 0.0001) * G((y[V] + 30), -9.)  * (1.0 - y[MN])) + ((3.209 * 0.0001) * G((y[V] + 30), 9.) * y[MN]);
 	
-	if (DELAY >= STEPSIZE) {
+	if (arguments.delay >= STEPSIZE) {
 		dydx[S] = 2 * (1 + tanh(*oldv / 4.0)) * (1 - y[S]) - y[S] / tau; //uses *oldv which should be del, the delay pointer in the buffer
 	}
 	else {
@@ -566,7 +563,7 @@ void printemp(Template *temp) {//will cause an error if the template doesn't hav
 	fprintf(stderr, "Initial array of state variables\n");
 	printdarr(temp->init, N);
 	fprintf(stderr, "Initial array of buffer\n");
-	printdarr(temp->ibuf, (int)(DELAY / STEPSIZE));
+	printdarr(temp->ibuf, (int)(arguments.delay / STEPSIZE));
 	
 }
 
@@ -595,7 +592,7 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 	extern double current[];				//external variable declaration
 	
 	//Variables to do with delay
-	int dsteps = (int)(DELAY / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
+	int dsteps = (int)(arguments.delay / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
 	double buf[dsteps];
 	del = buf;
 	int bufpos;
@@ -634,7 +631,7 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 	//~ printf("\n\n\n\nAttempting to use template within pertsim!\n");
 	//~ printemp(&spike);
 	copyab(spike.init, v, N);
-	copyab(spike.ibuf, buf, (int)(DELAY / STEPSIZE));
+	copyab(spike.ibuf, buf, (int)(arguments.delay / STEPSIZE));
 	bufpos = spike.bufpos;
 	del = &buf[bufpos]; //moves the pointer to the correct initial position in the buffer, unnecessary i believe
 	pert = spike.volts;
@@ -738,6 +735,10 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 	free(xx);	
 }
 
+void template_init(Template *temp) {
+	temp->ibuf = malloc(sizeof(double) * ((int)(arguments.delay / STEPSIZE)));
+}
+
 void prc(Template spike, int interval, double normalperiod) {
 	Phipair prc [interval + 1];
 	int i;
@@ -821,6 +822,7 @@ int main(int argc, char **argv) {
   arguments.highprop = 0;
   arguments.highstart = 0;
   arguments.highend = 0;
+  arguments.delay = 0;
 
   /* Parse our arguments; every option seen by parse_opt will
      be reflected in arguments. */
@@ -843,7 +845,7 @@ int main(int argc, char **argv) {
 	double weight[NN*NN];
 	scan_(weight, NN*NN, "weights.data");
 	
-	fprintf(stderr, "DELAY = %fms.\n", DELAY);
+	fprintf(stderr, "DELAY = %fms.\n", arguments.delay);
 	if (arguments.lowprop) {
 		fprintf(stderr, "Using Low Dose Propofol starting at time %d and ending at %d.\n", arguments.lowstart, arguments.lowend);
 	}
@@ -857,7 +859,7 @@ int main(int argc, char **argv) {
 	*/
 
 	//Variables to do with delay
-	int dsteps = (int)(DELAY / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
+	int dsteps = (int)(arguments.delay / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
 	double* buf[dsteps];
 	for (i = 0; i < dsteps; ++i) {
 		buf[i] = (double*) malloc(sizeof(double) * NN);		//allocates memory for an array of arrays, length depending on the number of neurons in the simulation
@@ -893,7 +895,7 @@ int main(int argc, char **argv) {
 	time = STARTTIME;
 	scan_(v, N*NN, "state.data");				//scanning in initial variables (state variables only) 
 
-	if (DELAY >= STEPSIZE) {
+	if (arguments.delay >= STEPSIZE) {
 		for (i = 0; i < (dsteps); ++i) {//sets every double in buffer(s) to be equal to 0
 			for (j = 0; j < NN; ++j) {
 					buf[i][j] = 0.0;
@@ -937,7 +939,7 @@ int main(int argc, char **argv) {
 		derivs(time, v, dv, del, weight);										//actually does the step
 		rk4(v, dv, (N * NN), time, STEPSIZE, vout, del, weight);				//actually does the step
 		
-		if (DELAY >= STEPSIZE) {
+		if (arguments.delay >= STEPSIZE) {
 			for (j = 0; j < NN; ++j) {								
 				del[j] = vout[S + (N * j)];							//dereferences the delay pointer, and puts the previous y[S] in the same spot
 			}
@@ -957,7 +959,7 @@ int main(int argc, char **argv) {
 		time += STEPSIZE;
 		xx[k + 1] = time;
 		
-		if (DELAY >= STEPSIZE) {
+		if (arguments.delay >= STEPSIZE) {
 			bufpos = (++bufpos)%dsteps;
 		}
 		
@@ -1036,7 +1038,7 @@ int main(int argc, char **argv) {
 	if (arguments.prc || DO_TRACE) {
 		
 		//Variables to do with delay
-		int dsteps = (int)(DELAY / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
+		int dsteps = (int)(arguments.delay / STEPSIZE);	//number of steps in the delay (i.e. number of elements in the buffer)
 		double prcbuf[dsteps];
 		del = prcbuf;
 		int bufpos = 0;
@@ -1054,6 +1056,7 @@ int main(int argc, char **argv) {
 		double fthresh = -1.0;					//time at which voltage crosses threshold on the way up
 		double sndthresh = -1.0;				//time at which voltage crosses threshold on the way down
 		Template spike;
+		template_init(&spike);
 
 		int startstep;
 		fprintf(stderr, "\n\n\n\nDoing PRC and/or Trace\n-running preliminary PRC simulation\n");
@@ -1257,13 +1260,16 @@ int main(int argc, char **argv) {
 		free(xx);	
 		
 		free(spike.volts);
+		free(spike.ibuf);
+		
 
 		if (TESTLINE) {
 			char test[300];
-			sprintf(test, "python2 testline.py prc1.data %f %f", DELAY, normalperiod);
+			sprintf(test, "python2 testline.py prc1.data %f %f", arguments.delay, normalperiod);
 			fprintf(stderr, "%s\n", test);
 			system(test);
 		}
+		
 		//fprintf(stderr, "testing testing \n");
 	}	
 	return 0;
