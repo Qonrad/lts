@@ -32,11 +32,11 @@
 #define I_APP_START 500
 #define I_APP_END 501
 //#define USE_LOWPROPOFOL 1	
-#define USE_HIGHPROPOFOL 0
+//#define USE_HIGHPROPOFOL 0
 //#define LOW_PROPOFOL_START 0.0
 //#define LOW_PROPOFOL_END 5000.0
-#define HIGH_PROPOFOL_START 0000.0
-#define HIGH_PROPOFOL_END 0000.0
+//#define HIGH_PROPOFOL_START 0000.0
+//#define HIGH_PROPOFOL_END 0000.0
 #define LOWPROP_GSYN 0.25 //should be 0.25, divided it by 20 instead of using DIVNN to exactly match Carmen's code
 #define LOWPROP_TAU 10
 #define HIGHPROP_GSYN 0.5
@@ -152,6 +152,10 @@ parse_opt (int key, char *arg, struct argp_state *state)
     case 'e':
 		arguments->etime = atoi(arg);
 		break;
+	case 'h':
+		arguments->highprop = 1;
+		range_parser(&(arguments->highstart), &(arguments->highend), arg);
+		break;
 	case 'l':
 		arguments->lowprop = 1;
 		range_parser(&(arguments->lowstart), &(arguments->lowend), arg);
@@ -219,9 +223,9 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		gsyn = ((time > arguments.lowstart && time < arguments.lowend)) ? LOWPROP_GSYN : G_SYN;
 		tau = ((time > arguments.lowstart && time < arguments.lowend)) ? LOWPROP_TAU : TAUSYN; 
 	}
-	else if (USE_HIGHPROPOFOL) {
-		gsyn = ((time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END)) ? HIGHPROP_GSYN : G_SYN;
-		tau = ((time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END)) ? HIGHPROP_TAU : TAUSYN;
+	else if (arguments.highprop) {
+		gsyn = ((time > arguments.highstart && time < arguments.highend)) ? HIGHPROP_GSYN : G_SYN;
+		tau = ((time > arguments.highstart && time < arguments.highend)) ? HIGHPROP_TAU : TAUSYN;
 	}
 	else {	
 		gsyn = G_SYN;
@@ -448,9 +452,9 @@ void prcderivs(double time, double *y, double *dydx, double *oldv) {
 		gsyn = ((time > arguments.lowstart && time < arguments.lowend) || prcmode) ? LOWPROP_GSYN : G_SYN;
 		tau = ((time > arguments.lowstart && time < arguments.lowend) || prcmode) ? LOWPROP_TAU : TAUSYN; 
 	}
-	else if (USE_HIGHPROPOFOL) {
-		gsyn = ((time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END) || prcmode) ? HIGHPROP_GSYN : G_SYN;
-		tau = ((time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END) || prcmode) ? HIGHPROP_TAU : TAUSYN;
+	else if (arguments.highprop) {
+		gsyn = ((time > arguments.highstart && time < arguments.highend) || prcmode) ? HIGHPROP_GSYN : G_SYN;
+		tau = ((time > arguments.highstart && time < arguments.highend) || prcmode) ? HIGHPROP_TAU : TAUSYN;
 	}
 	else {	
 		gsyn = G_SYN;
@@ -791,8 +795,8 @@ void range_parser(int *start, int *end, const char *range) {
 			strcpy(e, &input[i + 1]);
 			input[i] = '\0';
 			strcpy(s, input);
-			printf("%s\n", s);
-			printf("%s\n", e);
+			//printf("%s\n", s);
+			//printf("%s\n", e);
 			*start = atoi(s);
 			*end = atoi(e);
 			return;
@@ -814,6 +818,9 @@ int main(int argc, char **argv) {
   arguments.lowprop = 0;
   arguments.lowstart = 0;
   arguments.lowend = 0;
+  arguments.highprop = 0;
+  arguments.highstart = 0;
+  arguments.highend = 0;
 
   /* Parse our arguments; every option seen by parse_opt will
      be reflected in arguments. */
@@ -840,8 +847,8 @@ int main(int argc, char **argv) {
 	if (arguments.lowprop) {
 		fprintf(stderr, "Using Low Dose Propofol starting at time %d and ending at %d.\n", arguments.lowstart, arguments.lowend);
 	}
-	if (USE_HIGHPROPOFOL) {
-		fprintf(stderr, "Using High Dose Propofol starting at time %d and ending at %d.\n", HIGH_PROPOFOL_START, HIGH_PROPOFOL_END);
+	if (arguments.highprop) {
+		fprintf(stderr, "Using High Dose Propofol starting at time %d and ending at %d.\n", arguments.highstart, arguments.highend);
 	}
 	/*
 	fprintf(stderr, "Printing data to file ");
@@ -917,9 +924,9 @@ int main(int argc, char **argv) {
 			gsyn = (time > arguments.lowstart && time < arguments.lowend) ? LOWPROP_GSYN : G_SYN; 
 			tau  = (time > arguments.lowstart && time < arguments.lowend) ? LOWPROP_TAU : TAUSYN; 
 		}
-		else if (USE_HIGHPROPOFOL && time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END) {
-			gsyn = (time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END) ? HIGHPROP_GSYN : G_SYN;
-			tau  = (time > HIGH_PROPOFOL_START && time < HIGH_PROPOFOL_END) ? HIGHPROP_TAU : TAUSYN;
+		else if (arguments.highprop && time > arguments.highstart && time < arguments.highend) {
+			gsyn = (time > arguments.highstart && time < arguments.highend) ? HIGHPROP_GSYN : G_SYN;
+			tau  = (time > arguments.highstart && time < arguments.highend) ? HIGHPROP_TAU : TAUSYN;
 		}
 		else {	
 			gsyn = (G_SYN);
