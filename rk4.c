@@ -47,8 +47,7 @@
 #define False 0
 #define INTERPOLATE 0
 #define INTERVAL 200
-#define PLONG 1
-#define FULLNAME "lowhigh.data"
+#define FULLNAME "allvolts.data"
 #define DBIT 0
 #define DIVNN 1
 #define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
@@ -109,7 +108,8 @@ static struct argp_option options[] = {
 	{"highprop",'h', "HIGH_RANGE",	0, "Use High-dose Propofol. Mandatory arguement is time range eg: 0-5000"},
 	{"delay",	'd', "DELAY",		0, "synaptic delay of lts neurons. default is 0, must evenly divide stepsize"},
 	{"stepsize",'s', "STEPSIZE",	0, "size in ms of each step of the simulation, must be evenly divided by the delay if there is one"},
-	{"commit",	'c', "COMMIT",		OPTION_ARG_OPTIONAL, "option to commit the data and code changes when done running"},	 
+	{"commit",	'c', "COMMIT",		OPTION_ARG_OPTIONAL, "option to commit the data and code changes when done running"},
+	{"verbose", 'v', "VERBOSE",		OPTION_ARG_OPTIONAL, "toggles printing out extra data, only prints spike voltages by default (and prc if that's enabled"},	 
 	{ 0 }
 };
 
@@ -127,6 +127,7 @@ struct arguments
   int highstart;
   int highend;
   int commit;
+  int verbose;
   double delay;
   double stepsize;
 };
@@ -159,6 +160,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 			break;
 		case 's':
 			arguments->stepsize = atof(arg);
+			break;
+		case 'v':
+			arguments->verbose = 1;
 			break;
 		case 'l':
 			arguments->lowprop = 1;
@@ -841,6 +845,7 @@ int main(int argc, char **argv) {
 	arguments.delay = 0;
 	arguments.stepsize = 0.05;
 	arguments.commit = 0;
+	arguments.verbose = 0;
 
 	/* Parse our arguments; every option seen by parse_opt will
 	be reflected in arguments. */
@@ -987,17 +992,17 @@ int main(int argc, char **argv) {
 		}
 	}
 	
-	makefull(y, xx, nstep, "full.data");
+	makeallvolts(y, xx, nstep, FULLNAME);
 	
 	dump_(vout);
-	if (PLONG) {
+	if (arguments.verbose) {
 		makedata(y, xx, nstep, V, "v.data");
-		makedata(y, xx, nstep, (V + N), "v2.data");
+		//makedata(y, xx, nstep, (V + N), "v2.data");
 		makedata(y, xx, nstep, M, "m.data");
 		makedata(y, xx, nstep, H, "h.data");
 		makedata(y, xx, nstep, NV, "n.data");
 		makedata(y, xx, nstep, S, "s.data");
-		makeallvolts(y, xx, nstep, FULLNAME);
+		makefull(y, xx, nstep, "full.data");
 		
 		
 		//~ makefullsingle(y, xx, nstep, 0, "0full.data");
@@ -1018,11 +1023,11 @@ int main(int argc, char **argv) {
 		//~ makefullsingle(y, xx, nstep, 15, "15full.data");
 		//~ makefullsingle(y, xx, nstep, 16, "16full.data");
 		//~ makefullsingle(y, xx, nstep, 17, "17full.data");
-		makefullsingle(y, xx, nstep, 18, "18full.data");
+		//makefullsingle(y, xx, nstep, 18, "18full.data");
 		//~ makefullsingle(y, xx, nstep, 19, "19full.data");
 	}
 	else {
-		fprintf(stderr, "\n\nSince PLONG == 0, v-n.data are not being written\n\n");
+		fprintf(stderr, "\n\nSince verbose == 0, v-n.data are not being written Only vfull.data\n\n");
 	}
 	fprintf(stderr,"This simulation counted %d spikes of Neuron[0].\n", spikecount);
 	if (spikecount >= (SAMPLESIZE + OFFSET)) {
@@ -1206,12 +1211,11 @@ int main(int argc, char **argv) {
 				y[k + 1][i] = v[i];
 			}
 		}
-		if (PLONG) {
+		if (arguments.verbose) {
 			makedata(y, xx, nstep, V, "v.data");
 			makedata(y, xx, nstep, M, "m.data");
 			makedata(y, xx, nstep, H, "h.data");
 			makedata(y, xx, nstep, NV, "n.data");
-			makefull(y, xx, nstep, "low3.5del.data");
 		}
 		else {
 			fprintf(stderr, "\n\nSince PLONG == 0, v-n.data are not being written\n\n");
