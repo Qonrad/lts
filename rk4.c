@@ -994,8 +994,8 @@ int main(int argc, char **argv) {
 	
 	makeallvolts(y, xx, nstep, FULLNAME);
 	
-	dump_(vout);
 	if (arguments.verbose) {
+		dump_(vout);
 		makedata(y, xx, nstep, V, "v.data");
 		//makedata(y, xx, nstep, (V + N), "v2.data");
 		makedata(y, xx, nstep, M, "m.data");
