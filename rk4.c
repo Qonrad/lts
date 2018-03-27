@@ -1286,7 +1286,7 @@ int main(int argc, char **argv) {
 	}	
 	
 	printargs(argc, argv, "args.txt");
-	//system("git commit -a");
+	system("git commit -a");
 	
 	return 0;
 }
