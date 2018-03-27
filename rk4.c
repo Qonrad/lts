@@ -108,7 +108,8 @@ static struct argp_option options[] = {
 	{"lowprop", 'l', "LOW_RANGE",	0, "Use Low-dose Propofol. Mandatory argument is time range eg: 0-5000"},
 	{"highprop",'h', "HIGH_RANGE",	0, "Use High-dose Propofol. Mandatory arguement is time range eg: 0-5000"},
 	{"delay",	'd', "DELAY",		0, "synaptic delay of lts neurons. default is 0, must evenly divide stepsize"},
-	{"stepsize", 's', "STEPSIZE",	0, "size in ms of each step of the simulation, must be evenly divided by the delay if there is one"}, 
+	{"stepsize",'s', "STEPSIZE",	0, "size in ms of each step of the simulation, must be evenly divided by the delay if there is one"},
+	{"commit",	'c', "COMMIT",		OPTION_ARG_OPTIONAL, "option to commit the data and code changes when done running"},	 
 	{ 0 }
 };
 
@@ -125,6 +126,7 @@ struct arguments
   int highprop;
   int highstart;
   int highend;
+  int commit;
   double delay;
   double stepsize;
 };
@@ -151,6 +153,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 		case 'h':
 			arguments->highprop = 1;
 			range_parser(&(arguments->highstart), &(arguments->highend), arg);
+			break;
+		case 'c':
+			arguments->commit = 1;
 			break;
 		case 's':
 			arguments->stepsize = atof(arg);
@@ -835,6 +840,7 @@ int main(int argc, char **argv) {
 	arguments.highend = 0;
 	arguments.delay = 0;
 	arguments.stepsize = 0.05;
+	arguments.commit = 0;
 
 	/* Parse our arguments; every option seen by parse_opt will
 	be reflected in arguments. */
@@ -1286,7 +1292,8 @@ int main(int argc, char **argv) {
 	}	
 	
 	printargs(argc, argv, "args.txt");
-	system("git commit -a");
-	
+	if (arguments.commit) {
+		system("git commit -a");
+	}
 	return 0;
 }
