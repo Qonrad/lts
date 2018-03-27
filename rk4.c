@@ -1035,7 +1035,9 @@ int main(int argc, char **argv) {
 			sumdiffs += sptimes[i + 1] - sptimes[i];
 			spdiffs[i - OFFSET] = sptimes[i + 1] - sptimes[i];
 		}
-		printperiod(spdiffs, SAMPLESIZE - 1, "period.data");
+		if (arguments.verbose) {
+			printperiod(spdiffs, SAMPLESIZE - 1, "period.data");
+		}
 		normalperiod = sumdiffs / (SAMPLESIZE - 1);
 		psteps = (int)round(normalperiod / arguments.stepsize);
 		periodsd = calculateSD(spdiffs, SAMPLESIZE - 1);
@@ -1220,8 +1222,9 @@ int main(int argc, char **argv) {
 		else {
 			fprintf(stderr, "\n\nSince PLONG == 0, v-n.data are not being written\n\n");
 		}
-		dump_(vout);
-		
+		if (arguments.verbose) {
+			dump_(vout);
+		}
 		fprintf(stderr, "This simulation counted %d spikes in all.\n", spikecount);
 		if (spikecount >= (SAMPLESIZE + OFFSET)) {
 			for (i = OFFSET; i < SAMPLESIZE + OFFSET - 1; ++i) {		//calculates differences between spike times to find each period
