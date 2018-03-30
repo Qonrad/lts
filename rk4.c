@@ -821,9 +821,10 @@ void printargs(int argc, char **argv, const char *file) {
 	int i;
 	FILE *fopen(),*sp;
 	sp = fopen(file, "w");
-	for (i = 0; i < argc; ++i) {
+	for (i = 1; i < argc; ++i) {
 		fprintf(sp, "%s ", argv[i]);
 	}
+	fprintf(sp, "\n");
 	fclose(sp);
 	return;
 }
