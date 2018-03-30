@@ -53,7 +53,6 @@
 #define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
 #define F(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*(1.-(X)/(Y)/2.)) : ((X)/(exp( (X)/ (Y) ) -1)) )
 #define PERTENDTIME 5000	//separate endtime for prc stuff in order to differentiate it from main simulation
-//#define TESTLINE 1
 
 //Runge-Kutta Differential Equation Solver, abc
 
@@ -71,7 +70,6 @@
 
 /*Changes to make
  * make NUMBER_OF_NUERONS a required argument?
- * make graphing optional parameter
  * randomize inputfile
  * properly able to cat args.txt into parameters to perfectly recreate exact running of specific commit
  * 
@@ -118,9 +116,9 @@ static struct argp_option options[] = {
 	{"highprop",'h', "HIGH_RANGE",	0, "Use High-dose Propofol. Mandatory arguement is time range eg: 0-5000"},
 	{"delay",	'd', "DELAY",		0, "synaptic delay of lts neurons. default is 0, must evenly divide stepsize"},
 	{"stepsize",'s', "STEPSIZE",	0, "size in ms of each step of the simulation, must be evenly divided by the delay if there is one"},
-	{"commit",	'c', "COMMIT",		OPTION_ARG_OPTIONAL, "option to commit the data and code changes when done running"},
-	{"verbose", 'v', "VERBOSE",		OPTION_ARG_OPTIONAL, "toggles printing out extra data, only prints spike voltages by default (and prc if that's enabled"},
-	{"graph",	'g', "GRAPH",		OPTION_ARG_OPTIONAL, "toggles the graph option"},	 
+	{"commit",	'c', "toggle",		OPTION_ARG_OPTIONAL, "option to commit the data and code changes when done running"},
+	{"verbose", 'v', "toggle",		OPTION_ARG_OPTIONAL, "toggles printing out extra data, only prints spike voltages by default (and prc if that's enabled"},
+	{"graph",	'g', "toggle",		OPTION_ARG_OPTIONAL, "toggles the graph option"},	 
 	{ 0 }
 };
 
