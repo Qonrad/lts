@@ -69,6 +69,15 @@
 //Command for compiling and running on beowolf
 //gcc rk4.c -lm && ./a.out && python2 all-view2.py 20 full.data
 
+/*Changes to make
+ * make NUMBER_OF_NUERONS a required argument?
+ * make graphing optional parameter
+ * randomize inputfile
+ * 
+ */
+
+
+
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
