@@ -53,7 +53,7 @@
 #define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
 #define F(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*(1.-(X)/(Y)/2.)) : ((X)/(exp( (X)/ (Y) ) -1)) )
 #define PERTENDTIME 5000	//separate endtime for prc stuff in order to differentiate it from main simulation
-#define TESTLINE 1
+//#define TESTLINE 1
 
 //Runge-Kutta Differential Equation Solver, abc
 
@@ -73,6 +73,7 @@
  * make NUMBER_OF_NUERONS a required argument?
  * make graphing optional parameter
  * randomize inputfile
+ * properly able to cat args.txt into parameters to perfectly recreate exact running of specific commit
  * 
  */
 
@@ -118,7 +119,8 @@ static struct argp_option options[] = {
 	{"delay",	'd', "DELAY",		0, "synaptic delay of lts neurons. default is 0, must evenly divide stepsize"},
 	{"stepsize",'s', "STEPSIZE",	0, "size in ms of each step of the simulation, must be evenly divided by the delay if there is one"},
 	{"commit",	'c', "COMMIT",		OPTION_ARG_OPTIONAL, "option to commit the data and code changes when done running"},
-	{"verbose", 'v', "VERBOSE",		OPTION_ARG_OPTIONAL, "toggles printing out extra data, only prints spike voltages by default (and prc if that's enabled"},	 
+	{"verbose", 'v', "VERBOSE",		OPTION_ARG_OPTIONAL, "toggles printing out extra data, only prints spike voltages by default (and prc if that's enabled"},
+	{"graph",	'g', "GRAPH",		OPTION_ARG_OPTIONAL, "toggles the graph option"},	 
 	{ 0 }
 };
 
@@ -139,6 +141,7 @@ struct arguments
   int verbose;
   double delay;
   double stepsize;
+  int graph;
 };
 
 /* Parse a single option. */
@@ -172,6 +175,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 			break;
 		case 'v':
 			arguments->verbose = 1;
+			break;
+		case 'g':
+			arguments->graph = 1;
 			break;
 		case 'l':
 			arguments->lowprop = 1;
@@ -856,14 +862,13 @@ int main(int argc, char **argv) {
 	arguments.stepsize = 0.05;
 	arguments.commit = 0;
 	arguments.verbose = 0;
+	arguments.graph = 0;
 
 	/* Parse our arguments; every option seen by parse_opt will
 	be reflected in arguments. */
 	argp_parse (&argp, argc, argv, 0, 0, &arguments);
 
 	printf ("INPUTFILE = %s\nPRC = %s\nINTERVAL = %d\n", arguments.args[0], arguments.prc ? "yes" : "no", arguments.interval);
-	
-	
 	
 	gsyn = G_SYN;
 	tau = TAUSYN;
@@ -1298,7 +1303,7 @@ int main(int argc, char **argv) {
 		free(spike.ibuf);
 		
 
-		if (TESTLINE) {
+		if (arguments.graph) {
 			char test[300];
 			sprintf(test, "python2 testline.py prc1.data %f %f", arguments.delay, normalperiod);
 			fprintf(stderr, "%s\n", test);
