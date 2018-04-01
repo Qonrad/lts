@@ -49,7 +49,7 @@ class random_state:
 			print("something is wrong")
 			return -1
 
-v = random_state(-40, 0, "uniform")
+v = random_state(-100, 50, "uniform")
 m = random_state(0, 1, "uniform")
 h = random_state(0, 1, "uniform")
 nv = random_state(0, 1, "uniform")
