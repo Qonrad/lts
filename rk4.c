@@ -72,6 +72,7 @@
  * make NUMBER_OF_NUERONS a required argument?
  * randomize inputfile
  * properly able to cat args.txt into parameters to perfectly recreate exact running of specific commit
+ get prc and main to use the same derivs and rk4
  * 
  */
 
