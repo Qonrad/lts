@@ -73,6 +73,7 @@
  * randomize inputfile
  * properly able to cat args.txt into parameters to perfectly recreate exact running of specific commit
  get prc and main to use the same derivs and rk4
+ note: maybe its the divnn that's causing the difference from lowhigh to now
  * 
  */
 
@@ -96,6 +97,8 @@ double *iapps;
 static int prcmode;
 static int pertmode;
 double *pert;
+int pweight = 1;
+int self_connection = 0;
 
 
 const char *argp_program_version =
@@ -108,7 +111,7 @@ static char doc[] =
   "an lts simulation programmed by Conrad Leonik\n";
 
 /* A description of the arguments we accept. */
-static char args_doc[] = "INPUTFILE";
+static char args_doc[] = "INPUTFILE NUMBER NUMBER_OF_NUERONS";
 
 /* The options we understand. */
 static struct argp_option options[] = {
@@ -240,6 +243,7 @@ static inline double f(double v, double a, double th, double q) {
 void derivs(double time, double *y, double *dydx, double *oldv, double* weight) { 
 	double iapp, gsyn, tau;
 	int i, j;
+	extern double *pert;
 	
 	if (arguments.lowprop) {
 		gsyn = ((time > arguments.lowstart && time < arguments.lowend)) ? LOWPROP_GSYN : G_SYN;
@@ -297,7 +301,14 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		dydx[NV + (N * i)] = ((0.032) * G((y[V + (N * i)] + 52), -5.) * (1. - y[NV + (N * i)])) - (0.5 * exp(-(y[V + (N * i)] + 57.) / 40.) * y[NV + (N * i)]); 
 		dydx[MN + (N * i)] = ((3.209 * 0.0001) * G((y[V + (N * i)] + 30), -9.)  * (1.0 - y[MN + (N * i)])) + ((3.209 * 0.0001) * G((y[V + (N * i)] + 30), 9.) * y[MN + (N * i)]);
 		dydx[S + (N * i)] = ((2 * (1 + tanh(y[V + (i * N)] / 4.0))) * (1 - y[S + (i * N)])) - (y[S + (i * N)] / tau);		
-		dydx[P + (N * i)] = 0;
+		
+		if (pertmode) {
+			dydx[P] = 2 * (1 + tanh(*pert / 4.0)) * (1 - y[P]) - y[P] / tau;	//should probably be Ps instead of Ss
+		}
+		else {
+			dydx[P] = 2 * (1 + tanh((THRESHOLD) / 4.0)) * (1 - y[P]) - y[P] / tau;
+		}
+		//dydx[P + (N * i)] = 0;
 	}
 	return;
 }
@@ -1082,6 +1093,9 @@ int main(int argc, char **argv) {
 
 	//Starting PRC simulation, if requested
 	if (arguments.prc || DO_TRACE) {
+
+		nn = 1;
+		self_connection = 1;
 		
 		//Variables to do with delay
 		int dsteps = (int)(arguments.delay / arguments.stepsize);	//number of steps in the delay (i.e. number of elements in the buffer)
