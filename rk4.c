@@ -330,64 +330,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 	}
 	return;
 }
-/*
-void prcderivs(double time, double *y, double *dydx, double *oldv) { 
-	double iapp, gsyn, tau;
-	extern double *pert;
-	
-	
-	if (USE_I_APP && !(prcmode)) {
-		iapp = (time < I_APP_START || time > I_APP_END) ? I_APP : I_APP_STEP;
-		
-	}
-	else {
-		iapp = I_APP;
-	}
-	
-	if (arguments.lowprop) {
-		gsyn = ((time > arguments.lowstart && time < arguments.lowend) || prcmode) ? LOWPROP_GSYN : G_SYN;
-		tau = ((time > arguments.lowstart && time < arguments.lowend) || prcmode) ? LOWPROP_TAU : TAUSYN; 
-	}
-	else if (arguments.highprop) {
-		gsyn = ((time > arguments.highstart && time < arguments.highend) || prcmode) ? HIGHPROP_GSYN : G_SYN;
-		tau = ((time > arguments.highstart && time < arguments.highend) || prcmode) ? HIGHPROP_TAU : TAUSYN;
-	}
-	else {	
-		gsyn = G_SYN;
-		tau = TAUSYN;
-	}
-	
-	if (DIVNN) {
-		gsyn /= POPULATION;
-	}
-	
-	current[I_NA] = G_NA * y[H] * y[M] * y[M] * y[M] * (y[V] - E_NA);
-	current[I_K] =  G_K * y[NV] * y[NV] * y[NV] * y[NV] * (y[V] - E_K);
-	current[I_M] =  G_M * y[MN] * (y[V] - E_K);
-	current[I_L] =  G_L * (y[V] - E_L);
-	current[I_S] =  gsyn * ((y[S] * (MYCLUSTER - 1))+ (y[P] * (POPULATION - MYCLUSTER))) * (y[V] - E_SYN);
-	
-	dydx[V] = (iapp - current[I_NA] - current[I_K] - current[I_M] - current[I_L] - current[I_S]) / CM;
-	dydx[M] = ((0.32) * G((y[V] + 54), -4.) * (1. - y[M])) - ((0.28) * F((y[V] + 27), 5.) * y[M]);
-	dydx[H] = 0.128 * exp(-(y[V] + 50.0) / 18.0) * (1.0 - y[H]) - 4.0 / (1.0 + exp(-(y[V] + 27.0) / 5.0)) * y[H];   
-	dydx[NV] = ((0.032) * G((y[V] + 52), -5.) * (1. - y[NV])) - (0.5 * exp(-(y[V] + 57.) / 40.) * y[NV]); 
-	dydx[MN] = ((3.209 * 0.0001) * G((y[V] + 30), -9.)  * (1.0 - y[MN])) + ((3.209 * 0.0001) * G((y[V] + 30), 9.) * y[MN]);
-	
-	if (arguments.delay >= arguments.stepsize) {
-		dydx[S] = 2 * (1 + tanh(*oldv / 4.0)) * (1 - y[S]) - y[S] / tau; //uses *oldv which should be del, the delay pointer in the buffer
-	}
-	else {
-		dydx[S] = 2 * (1 + tanh(y[V] / 4.0)) * (1 - y[S]) - y[S] / tau;
-	}
-	if (pertmode) {
-		dydx[P] = 2 * (1 + tanh(*pert / 4.0)) * (1 - y[P]) - y[P] / tau;	//should probably be Ps instead of Ss
-	}
-	else {
-		dydx[P] = 2 * (1 + tanh((THRESHOLD) / 4.0)) * (1 - y[P]) - y[P] / tau;
-	}
-	return;
-}
-*/
+
 void scan_(double *Y, int n, const char *filename) {
 	FILE *fopen(),*sp;
 	int i, j;
@@ -1256,11 +1199,6 @@ int main(int argc, char **argv) {
 		}
 		fprintf(stderr, "fthresh = %f and sndthresh = %f\n", fthresh, sndthresh);
 		
-		
-		//~ makeunpert(y, xx, normalperiod, startstep, 0, 1, "unpertvx.data");
-		
-		
-		
 		snapshot(y, xx, nstep, V, fthresh, sndthresh, &spike);
 		printemp(&spike);
 		
@@ -1293,7 +1231,6 @@ int main(int argc, char **argv) {
 			free(y[i]);
 		}
 		free(xx);	
-		
 		free(spike.volts);
 		free(spike.ibuf);
 		
@@ -1304,8 +1241,6 @@ int main(int argc, char **argv) {
 			fprintf(stderr, "%s\n", test);
 			system(test);
 		}
-		
-		//fprintf(stderr, "testing testing \n");
 	}	
 	
 	printargs(argc, argv, "args.txt");
