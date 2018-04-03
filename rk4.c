@@ -49,7 +49,7 @@
 #define INTERVAL 200
 #define FULLNAME "allvolts.data"
 #define DBIT 0
-#define DIVNN 1
+//#define DIVNN 0
 #define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
 #define F(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*(1.-(X)/(Y)/2.)) : ((X)/(exp( (X)/ (Y) ) -1)) )
 #define PERTENDTIME 5000	//separate endtime for prc stuff in order to differentiate it from main simulation
@@ -123,7 +123,8 @@ static struct argp_option options[] = {
 	{"stepsize",'s', "STEPSIZE",	0, "size in ms of each step of the simulation, must be evenly divided by the delay if there is one"},
 	{"commit",	'c', "toggle",		OPTION_ARG_OPTIONAL, "option to commit the data and code changes when done running"},
 	{"verbose", 'v', "toggle",		OPTION_ARG_OPTIONAL, "toggles printing out extra data, only prints spike voltages by default (and prc if that's enabled"},
-	{"graph",	'g', "toggle",		OPTION_ARG_OPTIONAL, "toggles the graph option"},	 
+	{"graph",	'g', "toggle",		OPTION_ARG_OPTIONAL, "toggles the graph option"},
+	{"divnn",	'z', "toggle",		OPTION_ARG_OPTIONAL, "toggles dividing by NN, it DOES NOT by default even though McCarthy does"},	 
 	{ 0 }
 };
 
@@ -145,6 +146,7 @@ struct arguments
   double delay;
   double stepsize;
   int graph;
+  int divnn;
 };
 
 /* Parse a single option. */
@@ -188,6 +190,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 			if (DBIT) {
 				fprintf(stderr, "lowstart = %d. lowend = %d\n", arguments->lowstart, arguments->lowend);
 			}
+			break;
+		case 'z':
+			arguments->divnn = 1;
 			break;
 		case ARGP_KEY_ARG:
 			if (state->arg_num >= 2)
@@ -281,7 +286,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		current[I_L] =  G_L * (y[V + (N * i)] - E_L);
 		
 		if (self_connection) {
-			if (DIVNN) {
+			if (arguments.divnn) {
 				gsyn /= POPULATION;
 			}
 			current[I_S] =  gsyn * ((y[S] * (MYCLUSTER - 1))+ (y[P] * (POPULATION - MYCLUSTER))) * (y[V] - E_SYN);
@@ -300,7 +305,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 				}
 			}		
 			y[P + (N * i)] = current[I_S] ;	//sets perturbation state variable to synaptic current, doesn't affect simulation, purely for debugging purposes
-			current[I_S] *= (DIVNN) ? ((gsyn / (nn - 1)) * (y[V + (N * i)] - E_SYN)) : (gsyn * (y[V + (N * i)] - E_SYN)); //multiplies synaptic current by maximum synaptic conductance and other stuff
+			current[I_S] *= (arguments.divnn) ? ((gsyn / (nn - 1)) * (y[V + (N * i)] - E_SYN)) : (gsyn * (y[V + (N * i)] - E_SYN)); //multiplies synaptic current by maximum synaptic conductance and other stuff
 		}
 		
 		//all of these (except for h) are using a method to prevent a divide by zero error I was encountering
@@ -793,6 +798,7 @@ int main(int argc, char **argv) {
 	arguments.commit = 0;
 	arguments.verbose = 0;
 	arguments.graph = 0;
+	arguments.divnn = 0;
 
 	/* Parse our arguments; every option seen by parse_opt will
 	be reflected in arguments. */
@@ -800,6 +806,12 @@ int main(int argc, char **argv) {
 
 	printf ("INPUTFILE = %s\nPRC = %s\nINTERVAL = %d\n", arguments.args[0], arguments.prc ? "yes" : "no", arguments.interval);
 	printf("nn = %d\n", atoi(arguments.args[1]));
+	if (arguments.divnn) {
+		printf("DIVNN IS enabled\n");
+	}
+	else {
+		printf("DIVNN IS NOT enabled\n");
+	}
 
 	nn = atoi(arguments.args[1]);
 	iapps = malloc(sizeof(double) * nn);
