@@ -41,12 +41,12 @@
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 50 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 10			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
-#define POPULATION 20		//number of neurons in the whole population
-#define MYCLUSTER 10		//number of neurons in the simulated neuron's population
+//#define POPULATION 20		//number of neurons in the whole population
+//#define MYCLUSTER 10		//number of neurons in the simulated neuron's population
 #define True 1
 #define False 0
 #define INTERPOLATE 0
-#define INTERVAL 200
+//#define INTERVAL 200
 #define FULLNAME "allvolts.data"
 #define DBIT 0
 //#define DIVNN 0
@@ -115,7 +115,7 @@ static char args_doc[] = "INPUTFILE NUMBER NUMBER_OF_NUERONS";
 
 /* The options we understand. */
 static struct argp_option options[] = {
-	{"prc",		'p', "INTERVAL",	0, "Run PRC. Argument is interval." },
+	{"prc",		'p', "MYCLUSTER",	0, "Run PRC. Argument is size of cluster." },
 	{"etime",	'e', "ENDTIME",		0, "ENDTIME of main simulation. Default is 5000."},
 	{"lowprop", 'l', "LOW_RANGE",	0, "Use Low-dose Propofol. Mandatory argument is time range eg: 0-5000"},
 	{"highprop",'h', "HIGH_RANGE",	0, "Use High-dose Propofol. Mandatory arguement is time range eg: 0-5000"},
@@ -124,7 +124,8 @@ static struct argp_option options[] = {
 	{"commit",	'c', "toggle",		OPTION_ARG_OPTIONAL, "option to commit the data and code changes when done running"},
 	{"verbose", 'v', "toggle",		OPTION_ARG_OPTIONAL, "toggles printing out extra data, only prints spike voltages by default (and prc if that's enabled"},
 	{"graph",	'g', "toggle",		OPTION_ARG_OPTIONAL, "toggles the graph option"},
-	{"divnn",	'z', "toggle",		OPTION_ARG_OPTIONAL, "toggles dividing by NN, it DOES NOT by default even though McCarthy does"},	 
+	{"divnn",	'z', "toggle",		OPTION_ARG_OPTIONAL, "toggles dividing by NN, it DOES NOT by default even though McCarthy does"},
+	{"interval", 'i', "INTERVAL",	0, "can set interval manually, default is 100"},	 
 	{ 0 }
 };
 
@@ -134,6 +135,7 @@ struct arguments
   char *args[2];                /* arg1 & arg2 */
   int prc;
   int interval;
+  int clustersize;
   int etime;
   int lowprop;
   int lowstart;
@@ -163,7 +165,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
 			break;
 		case 'p':
 			arguments->prc = 1;
-			arguments->interval = atoi(arg);
+			arguments->clustersize = atoi(arg);
 			break;
 		case 'e':
 			arguments->etime = atoi(arg);
@@ -193,6 +195,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 			break;
 		case 'z':
 			arguments->divnn = 1;
+			break;
+		case 'i':
+			arguments->interval = atof(arg);
 			break;
 		case ARGP_KEY_ARG:
 			if (state->arg_num >= 2)
@@ -287,15 +292,15 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		
 		if (self_connection) {
 			if (arguments.divnn) {
-				gsyn /= POPULATION;
+				gsyn /= nn;
 			}
-			current[I_S] =  gsyn * ((y[S] * (MYCLUSTER - 1))+ (y[P] * (POPULATION - MYCLUSTER))) * (y[V] - E_SYN);
+			current[I_S] =  gsyn * ((y[S] * (arguments.clustersize - 1))+ (y[P] * (nn - arguments.clustersize))) * (y[V] - E_SYN);
 		}
 
 		else {
 			current[I_S] = 0.0;
 			if (arguments.delay >= arguments.stepsize) {
-				for (j = 0; j < nn; ++j) {			//dydx[S] = 2 * (1 + tanh(*oldv / 4.0)) * (1 - y[S]) - y[S] / tau;
+				for (j = 0; j < nn; ++j) {
 					current[I_S] += weight[j + (i * nn)] * oldv[j]; //sums up products of weight and presynaptic y[S]
 				}
 			} 
@@ -323,10 +328,10 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 				dydx[S] = 2 * (1 + tanh(y[V] / 4.0)) * (1 - y[S]) - y[S] / tau;
 			}
 			if (pertmode) {
-				dydx[P] = 2 * (1 + tanh(*pert / 4.0)) * (1 - y[P]) - y[P] / tau;	//should probably be Ps instead of Ss
+				dydx[P] = 2 * (1 + tanh(*pert / 4.0)) * (1 - y[P]) - y[P] / tau;
 			}
 			else {
-				dydx[P] = 2 * (1 + tanh((THRESHOLD) / 4.0)) * (1 - y[P]) - y[P] / tau;
+				dydx[P] = 2 * (1 + tanh((THRESHOLD) / 4.0)) * (1 - y[P]) - y[P] / tau;	//not sure why THRESHOLD is being used here?
 			}
 		}
 		else {
@@ -520,10 +525,12 @@ void printemp(Template *temp) {//will cause an error if the template doesn't hav
 	fprintf(stderr, "This template contains %d steps.\n", temp->steps);
 	fprintf(stderr, "Array of Voltages\n");
 	printdarr(temp->volts, temp->steps);
-	fprintf(stderr, "Initial array of state variables\n");
-	printdarr(temp->init, N);
-	fprintf(stderr, "Initial array of buffer\n");
-	printdarr(temp->ibuf, (int)(arguments.delay / arguments.stepsize));
+	if (arguments.verbose) {
+		fprintf(stderr, "Initial array of state variables\n");
+		printdarr(temp->init, N);
+		fprintf(stderr, "Initial array of buffer\n");
+		printdarr(temp->ibuf, (int)(arguments.delay / arguments.stepsize));
+	}
 	
 }
 
@@ -799,6 +806,8 @@ int main(int argc, char **argv) {
 	arguments.verbose = 0;
 	arguments.graph = 0;
 	arguments.divnn = 0;
+	arguments.interval = 100;
+	arguments.clustersize = 0;
 
 	/* Parse our arguments; every option seen by parse_opt will
 	be reflected in arguments. */
@@ -1026,6 +1035,7 @@ int main(int argc, char **argv) {
 
 		nn = 1;
 		self_connection = 1;
+		printf("Running PRC on clustersize %d!\nGraph the main simulation to see whether that's appropriate for the PRC being run.\n", arguments.clustersize);
 		
 		//Variables to do with delay
 		int dsteps = (int)(arguments.delay / arguments.stepsize);	//number of steps in the delay (i.e. number of elements in the buffer)
