@@ -73,7 +73,7 @@
  * randomize inputfile
  * properly able to cat args.txt into parameters to perfectly recreate exact running of specific commit
  get prc and main to use the same derivs and rk4
- note: maybe its the divnn that's causing the difference from lowhigh to now
+ note: maybe its the divnn that's causing the difference from lowhigh to now, also population & mycluster?
  * 
  */
 
@@ -97,7 +97,7 @@ double *iapps;
 static int prcmode;
 static int pertmode;
 double *pert;
-int pweight = 1;
+double pweight = 1;
 int self_connection = 0;
 
 
@@ -280,19 +280,28 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		current[I_M] =  G_M * y[MN + (N * i)] * (y[V + (N * i)] - E_K);
 		current[I_L] =  G_L * (y[V + (N * i)] - E_L);
 		
-		current[I_S] = 0.0;
-		if (arguments.delay >= arguments.stepsize) {
-			for (j = 0; j < nn; ++j) {
-				current[I_S] += weight[j + (i * nn)] * oldv[j]; //sums up products of weight and presynaptic y[S]
+		if (self_connection) {
+			if (DIVNN) {
+				gsyn /= POPULATION;
 			}
-		} else {
-			for (j = 0; j < nn; ++j) {
-				current[I_S] += weight[j + (i * nn)] * y[S + (N * j)]; //sums up products of weight and presynaptic y[S]
-			}
-		}		
-		y[P + (N * i)] = current[I_S] ;	//sets perturbation state variable to synaptic current, doesn't affect simulation, purely for debugging purposes
-		
-		current[I_S] *= (DIVNN) ? ((gsyn / (nn - 1)) * (y[V + (N * i)] - E_SYN)) : (gsyn * (y[V + (N * i)] - E_SYN)); //multiplies synaptic current by maximum synaptic conductance and other stuff
+			current[I_S] =  gsyn * ((y[S] * (MYCLUSTER - 1))+ (y[P] * (POPULATION - MYCLUSTER))) * (y[V] - E_SYN);
+		}
+
+		else {
+			current[I_S] = 0.0;
+			if (arguments.delay >= arguments.stepsize) {
+				for (j = 0; j < nn; ++j) {			//dydx[S] = 2 * (1 + tanh(*oldv / 4.0)) * (1 - y[S]) - y[S] / tau;
+					current[I_S] += weight[j + (i * nn)] * oldv[j]; //sums up products of weight and presynaptic y[S]
+				}
+			} 
+			else {
+				for (j = 0; j < nn; ++j) {
+					current[I_S] += weight[j + (i * nn)] * y[S + (N * j)]; //sums up products of weight and presynaptic y[S]
+				}
+			}		
+			y[P + (N * i)] = current[I_S] ;	//sets perturbation state variable to synaptic current, doesn't affect simulation, purely for debugging purposes
+			current[I_S] *= (DIVNN) ? ((gsyn / (nn - 1)) * (y[V + (N * i)] - E_SYN)) : (gsyn * (y[V + (N * i)] - E_SYN)); //multiplies synaptic current by maximum synaptic conductance and other stuff
+		}
 		
 		//all of these (except for h) are using a method to prevent a divide by zero error I was encountering
 		dydx[V + (N * i)] = (iapp - current[I_NA] - current[I_K] - current[I_M] - current[I_L] - current[I_S]) / CM;
@@ -300,19 +309,28 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		dydx[H + (N * i)] = 0.128 * exp(-(y[V + (N * i)] + 50.0) / 18.0) * (1.0 - y[H + (N * i)]) - 4.0 / (1.0 + exp(-(y[V + (N * i)] + 27.0) / 5.0)) * y[H + (N * i)];   
 		dydx[NV + (N * i)] = ((0.032) * G((y[V + (N * i)] + 52), -5.) * (1. - y[NV + (N * i)])) - (0.5 * exp(-(y[V + (N * i)] + 57.) / 40.) * y[NV + (N * i)]); 
 		dydx[MN + (N * i)] = ((3.209 * 0.0001) * G((y[V + (N * i)] + 30), -9.)  * (1.0 - y[MN + (N * i)])) + ((3.209 * 0.0001) * G((y[V + (N * i)] + 30), 9.) * y[MN + (N * i)]);
-		dydx[S + (N * i)] = ((2 * (1 + tanh(y[V + (i * N)] / 4.0))) * (1 - y[S + (i * N)])) - (y[S + (i * N)] / tau);		
 		
-		if (pertmode) {
-			dydx[P] = 2 * (1 + tanh(*pert / 4.0)) * (1 - y[P]) - y[P] / tau;	//should probably be Ps instead of Ss
+		if (self_connection) {
+			if (arguments.delay >= arguments.stepsize) {
+				dydx[S] = 2 * (1 + tanh(*oldv / 4.0)) * (1 - y[S]) - y[S] / tau; //uses *oldv which should be del, the delay pointer in the buffer
+			}
+			else {
+				dydx[S] = 2 * (1 + tanh(y[V] / 4.0)) * (1 - y[S]) - y[S] / tau;
+			}
+			if (pertmode) {
+				dydx[P] = 2 * (1 + tanh(*pert / 4.0)) * (1 - y[P]) - y[P] / tau;	//should probably be Ps instead of Ss
+			}
+			else {
+				dydx[P] = 2 * (1 + tanh((THRESHOLD) / 4.0)) * (1 - y[P]) - y[P] / tau;
+			}
 		}
 		else {
-			dydx[P] = 2 * (1 + tanh((THRESHOLD) / 4.0)) * (1 - y[P]) - y[P] / tau;
+			dydx[S + (N * i)] = ((2 * (1 + tanh(y[V + (i * N)] / 4.0))) * (1 - y[S + (i * N)])) - (y[S + (i * N)] / tau);
 		}
-		//dydx[P + (N * i)] = 0;
 	}
 	return;
 }
-
+/*
 void prcderivs(double time, double *y, double *dydx, double *oldv) { 
 	double iapp, gsyn, tau;
 	extern double *pert;
@@ -369,7 +387,7 @@ void prcderivs(double time, double *y, double *dydx, double *oldv) {
 	}
 	return;
 }
-
+*/
 void scan_(double *Y, int n, const char *filename) {
 	FILE *fopen(),*sp;
 	int i, j;
@@ -524,49 +542,6 @@ void printperiod(double *periodarray, int len, const char *filename) {	//makes a
 	fclose(fp);
 }
 
-
-
-void prcrk4(double y[], double dydx[], int n, double x, double h, double yout[], double *oldv) {
-	int i;
-	double xh, hh, h6, *dym, *dyt, *yt;
-	
-	dym = (double*) malloc(n * sizeof(double));
-	dyt = (double*) malloc(n * sizeof(double));
-	yt = (double*) malloc(n * sizeof(double));
-	
-	
-	hh = h * 0.5;
-	h6 = h / 6.0;
-	xh = x + hh;
-	
-	for (i = 0; i < n; i++) {			//first step
-		yt[i] = y[i] + hh * dydx[i];
-	}
-	
-	prcderivs(xh, yt, dyt, oldv);				//second step
-	
-	for (i = 0; i < n; i++) {
-		yt[i] = y[i] + hh * dyt[i];
-	}
-	
-	prcderivs(xh, yt, dym, oldv);				//third step
-	
-	for (i = 0; i < n; i++) {
-		yt[i] = y[i] + h * dym[i];
-		dym[i] += dyt[i];
-	}
-	
-	prcderivs(x + h, yt, dyt, oldv);			//fourth step
-	
-	for (i = 0; i < n; i++) {			//Accumulate increments with proper weights.
-		yout[i] = y[i] + h6 * (dydx[i] + dyt[i] + 2.0 * dym[i]);
-	}
-	
-	free(dym);
-	free(dyt);
-	free(yt);
-}
-
 void snapshot(double** y, double *xx, int nstep, int var, double timestart, double timestop, Template *temp) {
 	temp->steps = (int)(round((timestop - timestart) / arguments.stepsize));
 	temp->volts = (double*) malloc(sizeof(double) * temp->steps);
@@ -675,8 +650,8 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 	pertpos = 0;
 	//~ printf("Template successfully initiated!\n");
 	
-	prcderivs(time, v, dv, del);	//does running this one effect the phase/ perturbation? I don't think so but I'm not sure.
-	prcrk4(v, dv, N, time, arguments.stepsize, vout, del);
+	derivs(time, v, dv, del, &pweight);	//does running this one effect the phase/ perturbation? I don't think so but I'm not sure.
+	rk4(v, dv, N, time, arguments.stepsize, vout, del, &pweight);
 	
 	xx[0] = time;
 	for (i = 0; i < N; i++) {
@@ -694,8 +669,8 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 				flag = True;
 			}
 		del = &buf[bufpos]; //moves the pointer one step ahead in the buffer
-		prcderivs(time, v, dv, del);
-		prcrk4(v, dv, N, time, arguments.stepsize, vout, del);
+		derivs(time, v, dv, del, &pweight);
+		rk4(v, dv, N, time, arguments.stepsize, vout, del, &pweight);
 		*del = vout[0];
 				
 		time += arguments.stepsize;
@@ -1153,9 +1128,9 @@ int main(int argc, char **argv) {
 			prcbuf[i] = v[0];
 		}
 		
-		prcderivs(time, v, dv, del);
+		derivs(time, v, dv, del, &pweight);
 		
-		prcrk4(v, dv, N, time, arguments.stepsize, vout, del);
+		rk4(v, dv, N, time, arguments.stepsize, vout, del, &pweight);
 		
 		xx[0] = STARTTIME;		
 		for (i = 0; i < N; i++) {
@@ -1165,8 +1140,8 @@ int main(int argc, char **argv) {
 
 		for (k = 0; k < nstep; k++) {
 			del = &prcbuf[bufpos]; //moves the pointer one step ahead in the buffer
-			prcderivs(time, v, dv, del);
-			prcrk4(v, dv, N, time, arguments.stepsize, vout, del);
+			derivs(time, v, dv, del, &pweight);
+			rk4(v, dv, N, time, arguments.stepsize, vout, del, &pweight);
 			*del = vout[0];
 			
 			if (vout[0] >= THRESHOLD && v[0] < THRESHOLD) {
