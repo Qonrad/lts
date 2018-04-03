@@ -91,7 +91,7 @@
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
 double gsyn, tau;
-double iapps[NN];
+double *iapps;
 static int prcmode;
 static int pertmode;
 double *pert;
@@ -126,7 +126,7 @@ static struct argp_option options[] = {
 /* Used by main to communicate with parse_opt. */
 struct arguments
 {
-  char *args[1];                /* arg1 & arg2 */
+  char *args[2];                /* arg1 & arg2 */
   int prc;
   int interval;
   int etime;
@@ -186,7 +186,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
 			}
 			break;
 		case ARGP_KEY_ARG:
-			if (state->arg_num >= 1)
+			if (state->arg_num >= 2)
 			/* Too many arguments. */
 			argp_usage (state);
 
@@ -297,6 +297,63 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		dydx[MN + (N * i)] = ((3.209 * 0.0001) * G((y[V + (N * i)] + 30), -9.)  * (1.0 - y[MN + (N * i)])) + ((3.209 * 0.0001) * G((y[V + (N * i)] + 30), 9.) * y[MN + (N * i)]);
 		dydx[S + (N * i)] = ((2 * (1 + tanh(y[V + (i * N)] / 4.0))) * (1 - y[S + (i * N)])) - (y[S + (i * N)] / tau);		
 		dydx[P + (N * i)] = 0;
+	}
+	return;
+}
+
+void prcderivs(double time, double *y, double *dydx, double *oldv) { 
+	double iapp, gsyn, tau;
+	extern double *pert;
+	
+	
+	if (USE_I_APP && !(prcmode)) {
+		iapp = (time < I_APP_START || time > I_APP_END) ? I_APP : I_APP_STEP;
+		
+	}
+	else {
+		iapp = I_APP;
+	}
+	
+	if (arguments.lowprop) {
+		gsyn = ((time > arguments.lowstart && time < arguments.lowend) || prcmode) ? LOWPROP_GSYN : G_SYN;
+		tau = ((time > arguments.lowstart && time < arguments.lowend) || prcmode) ? LOWPROP_TAU : TAUSYN; 
+	}
+	else if (arguments.highprop) {
+		gsyn = ((time > arguments.highstart && time < arguments.highend) || prcmode) ? HIGHPROP_GSYN : G_SYN;
+		tau = ((time > arguments.highstart && time < arguments.highend) || prcmode) ? HIGHPROP_TAU : TAUSYN;
+	}
+	else {	
+		gsyn = G_SYN;
+		tau = TAUSYN;
+	}
+	
+	if (DIVNN) {
+		gsyn /= POPULATION;
+	}
+	
+	current[I_NA] = G_NA * y[H] * y[M] * y[M] * y[M] * (y[V] - E_NA);
+	current[I_K] =  G_K * y[NV] * y[NV] * y[NV] * y[NV] * (y[V] - E_K);
+	current[I_M] =  G_M * y[MN] * (y[V] - E_K);
+	current[I_L] =  G_L * (y[V] - E_L);
+	current[I_S] =  gsyn * ((y[S] * (MYCLUSTER - 1))+ (y[P] * (POPULATION - MYCLUSTER))) * (y[V] - E_SYN);
+	
+	dydx[V] = (iapp - current[I_NA] - current[I_K] - current[I_M] - current[I_L] - current[I_S]) / CM;
+	dydx[M] = ((0.32) * G((y[V] + 54), -4.) * (1. - y[M])) - ((0.28) * F((y[V] + 27), 5.) * y[M]);
+	dydx[H] = 0.128 * exp(-(y[V] + 50.0) / 18.0) * (1.0 - y[H]) - 4.0 / (1.0 + exp(-(y[V] + 27.0) / 5.0)) * y[H];   
+	dydx[NV] = ((0.032) * G((y[V] + 52), -5.) * (1. - y[NV])) - (0.5 * exp(-(y[V] + 57.) / 40.) * y[NV]); 
+	dydx[MN] = ((3.209 * 0.0001) * G((y[V] + 30), -9.)  * (1.0 - y[MN])) + ((3.209 * 0.0001) * G((y[V] + 30), 9.) * y[MN]);
+	
+	if (arguments.delay >= arguments.stepsize) {
+		dydx[S] = 2 * (1 + tanh(*oldv / 4.0)) * (1 - y[S]) - y[S] / tau; //uses *oldv which should be del, the delay pointer in the buffer
+	}
+	else {
+		dydx[S] = 2 * (1 + tanh(y[V] / 4.0)) * (1 - y[S]) - y[S] / tau;
+	}
+	if (pertmode) {
+		dydx[P] = 2 * (1 + tanh(*pert / 4.0)) * (1 - y[P]) - y[P] / tau;	//should probably be Ps instead of Ss
+	}
+	else {
+		dydx[P] = 2 * (1 + tanh((THRESHOLD) / 4.0)) * (1 - y[P]) - y[P] / tau;
 	}
 	return;
 }
@@ -455,62 +512,7 @@ void printperiod(double *periodarray, int len, const char *filename) {	//makes a
 	fclose(fp);
 }
 
-void prcderivs(double time, double *y, double *dydx, double *oldv) { 
-	double iapp, gsyn, tau;
-	extern double *pert;
-	
-	
-	if (USE_I_APP && !(prcmode)) {
-		iapp = (time < I_APP_START || time > I_APP_END) ? I_APP : I_APP_STEP;
-		
-	}
-	else {
-		iapp = I_APP;
-	}
-	
-	if (arguments.lowprop) {
-		gsyn = ((time > arguments.lowstart && time < arguments.lowend) || prcmode) ? LOWPROP_GSYN : G_SYN;
-		tau = ((time > arguments.lowstart && time < arguments.lowend) || prcmode) ? LOWPROP_TAU : TAUSYN; 
-	}
-	else if (arguments.highprop) {
-		gsyn = ((time > arguments.highstart && time < arguments.highend) || prcmode) ? HIGHPROP_GSYN : G_SYN;
-		tau = ((time > arguments.highstart && time < arguments.highend) || prcmode) ? HIGHPROP_TAU : TAUSYN;
-	}
-	else {	
-		gsyn = G_SYN;
-		tau = TAUSYN;
-	}
-	
-	if (DIVNN) {
-		gsyn /= POPULATION;
-	}
-	
-	current[I_NA] = G_NA * y[H] * y[M] * y[M] * y[M] * (y[V] - E_NA);
-	current[I_K] =  G_K * y[NV] * y[NV] * y[NV] * y[NV] * (y[V] - E_K);
-	current[I_M] =  G_M * y[MN] * (y[V] - E_K);
-	current[I_L] =  G_L * (y[V] - E_L);
-	current[I_S] =  gsyn * ((y[S] * (MYCLUSTER - 1))+ (y[P] * (POPULATION - MYCLUSTER))) * (y[V] - E_SYN);
-	
-	dydx[V] = (iapp - current[I_NA] - current[I_K] - current[I_M] - current[I_L] - current[I_S]) / CM;
-	dydx[M] = ((0.32) * G((y[V] + 54), -4.) * (1. - y[M])) - ((0.28) * F((y[V] + 27), 5.) * y[M]);
-	dydx[H] = 0.128 * exp(-(y[V] + 50.0) / 18.0) * (1.0 - y[H]) - 4.0 / (1.0 + exp(-(y[V] + 27.0) / 5.0)) * y[H];   
-	dydx[NV] = ((0.032) * G((y[V] + 52), -5.) * (1. - y[NV])) - (0.5 * exp(-(y[V] + 57.) / 40.) * y[NV]); 
-	dydx[MN] = ((3.209 * 0.0001) * G((y[V] + 30), -9.)  * (1.0 - y[MN])) + ((3.209 * 0.0001) * G((y[V] + 30), 9.) * y[MN]);
-	
-	if (arguments.delay >= arguments.stepsize) {
-		dydx[S] = 2 * (1 + tanh(*oldv / 4.0)) * (1 - y[S]) - y[S] / tau; //uses *oldv which should be del, the delay pointer in the buffer
-	}
-	else {
-		dydx[S] = 2 * (1 + tanh(y[V] / 4.0)) * (1 - y[S]) - y[S] / tau;
-	}
-	if (pertmode) {
-		dydx[P] = 2 * (1 + tanh(*pert / 4.0)) * (1 - y[P]) - y[P] / tau;	//should probably be Ps instead of Ss
-	}
-	else {
-		dydx[P] = 2 * (1 + tanh((THRESHOLD) / 4.0)) * (1 - y[P]) - y[P] / tau;
-	}
-	return;
-}
+
 
 void prcrk4(double y[], double dydx[], int n, double x, double h, double yout[], double *oldv) {
 	int i;
@@ -844,6 +846,8 @@ void printargs(int argc, char **argv, const char *file) {
 }
 
 
+int nn;
+
 int main(int argc, char **argv) {
 	
 
@@ -868,6 +872,10 @@ int main(int argc, char **argv) {
 	argp_parse (&argp, argc, argv, 0, 0, &arguments);
 
 	printf ("INPUTFILE = %s\nPRC = %s\nINTERVAL = %d\n", arguments.args[0], arguments.prc ? "yes" : "no", arguments.interval);
+	printf("NN = %d\n", atoi(arguments.args[1]));
+
+	nn = atoi(arguments.args[1]);
+	iapps = malloc(sizeof(double) * nn);
 	
 	gsyn = G_SYN;
 	tau = TAUSYN;
@@ -1072,6 +1080,7 @@ int main(int argc, char **argv) {
 		free(y[i]);
 	}
 	free(xx);
+	free(iapps);
 
 	//Starting PRC simulation, if requested
 	if (arguments.prc || DO_TRACE) {

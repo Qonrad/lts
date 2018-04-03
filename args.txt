@@ -1,1 +1,1 @@
---delay=3.5 --lowprop=0-5000 --prc=100 newtest.txt 
+--delay=3.5 --lowprop=0-5000 --prc=100 newtest.txt 20 
