@@ -1,4 +1,4 @@
-#define NN 20
+//#define NN 20
 #define N 7
 #define C 5
 #define I_NA 0  
@@ -91,6 +91,7 @@
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
 double gsyn, tau;
+int nn;
 double *iapps;
 static int prcmode;
 static int pertmode;
@@ -255,7 +256,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 	
 	//fprintf(stderr, "time = %f, gsyn = %f, tau = %f\n", time, gsyn, tau);
 
-	for (i = 0; i < NN; i++) {
+	for (i = 0; i < nn; i++) {
 		
 		if (i >= I_APP_NEURONS && USE_I_APP) {
 			iapp = (time < I_APP_START || time > I_APP_END) ? I_APP : I_APP_STEP;	
@@ -277,17 +278,17 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		
 		current[I_S] = 0.0;
 		if (arguments.delay >= arguments.stepsize) {
-			for (j = 0; j < NN; ++j) {
-				current[I_S] += weight[j + (i * NN)] * oldv[j]; //sums up products of weight and presynaptic y[S]
+			for (j = 0; j < nn; ++j) {
+				current[I_S] += weight[j + (i * nn)] * oldv[j]; //sums up products of weight and presynaptic y[S]
 			}
 		} else {
-			for (j = 0; j < NN; ++j) {
-				current[I_S] += weight[j + (i * NN)] * y[S + (N * j)]; //sums up products of weight and presynaptic y[S]
+			for (j = 0; j < nn; ++j) {
+				current[I_S] += weight[j + (i * nn)] * y[S + (N * j)]; //sums up products of weight and presynaptic y[S]
 			}
 		}		
 		y[P + (N * i)] = current[I_S] ;	//sets perturbation state variable to synaptic current, doesn't affect simulation, purely for debugging purposes
 		
-		current[I_S] *= (DIVNN) ? ((gsyn / (NN - 1)) * (y[V + (N * i)] - E_SYN)) : (gsyn * (y[V + (N * i)] - E_SYN)); //multiplies synaptic current by maximum synaptic conductance and other stuff
+		current[I_S] *= (DIVNN) ? ((gsyn / (nn - 1)) * (y[V + (N * i)] - E_SYN)) : (gsyn * (y[V + (N * i)] - E_SYN)); //multiplies synaptic current by maximum synaptic conductance and other stuff
 		
 		//all of these (except for h) are using a method to prevent a divide by zero error I was encountering
 		dydx[V + (N * i)] = (iapp - current[I_NA] - current[I_K] - current[I_M] - current[I_L] - current[I_S]) / CM;
@@ -364,7 +365,7 @@ void scan_(double *Y, int n, const char *filename) {
 	sp = fopen(filename,"r");
 	for (i = 0; i < n; ++i)
 		if (fscanf(sp, "%lf\n", &Y[i]) != 1){
-			fprintf(stderr, "Not enough variables in state.data file.\nNeed %d only %d given\n", N*NN, i-1);
+			fprintf(stderr, "Not enough variables in state.data file.\nNeed %d only %d given\n", N*nn, i-1);
 			exit(1);
 		}
 	
@@ -376,7 +377,7 @@ void dump_(double Y[]) {
 	int i, j, pos;
 	sp = fopen("end.data","w");
 	pos = 0;
-	for (j = 0; j < NN; ++j) {
+	for (j = 0; j < nn; ++j) {
 		for (i = 0; i < (N); ++i) {
 			fprintf(sp, "%g\n", Y[pos]);
 			++pos;
@@ -442,10 +443,10 @@ void makefull(double** y, double *xx, int nstep, const char *filename) {	//makes
 	fp = fopen(filename, "w");
 	for (i = 0; i < nstep + 1; i++) {
 		fprintf(fp, "%f ", xx[i]);
-		for (j = 0; j < (N * NN) - 1; j++) {
+		for (j = 0; j < (N * nn) - 1; j++) {
 			fprintf(fp, "%f ", y[i][j]);
 		}
-		fprintf(fp, "%f\n", y[i][(N * NN) - 1]);
+		fprintf(fp, "%f\n", y[i][(N * nn) - 1]);
 	}
 	fclose(fp);
 }
@@ -456,10 +457,10 @@ void makeallvolts(double** y, double *xx, int nstep, const char *filename) {
 	fp = fopen(filename, "w");
 	for (i = 0; i < nstep + 1; i++) {
 		fprintf(fp, "%f ", xx[i]);
-		for (j = 0; j < NN - 1; j++) {
+		for (j = 0; j < nn - 1; j++) {
 			fprintf(fp, "%f ", y[i][V + (j * N)]);
 		}
-		fprintf(fp, "%f\n", y[i][V + (N * (NN - 1))]);
+		fprintf(fp, "%f\n", y[i][V + (N * (nn - 1))]);
 	}
 	fclose(fp);
 }
@@ -845,9 +846,6 @@ void printargs(int argc, char **argv, const char *file) {
 	return;
 }
 
-
-int nn;
-
 int main(int argc, char **argv) {
 	
 
@@ -872,7 +870,7 @@ int main(int argc, char **argv) {
 	argp_parse (&argp, argc, argv, 0, 0, &arguments);
 
 	printf ("INPUTFILE = %s\nPRC = %s\nINTERVAL = %d\n", arguments.args[0], arguments.prc ? "yes" : "no", arguments.interval);
-	printf("NN = %d\n", atoi(arguments.args[1]));
+	printf("nn = %d\n", atoi(arguments.args[1]));
 
 	nn = atoi(arguments.args[1]);
 	iapps = malloc(sizeof(double) * nn);
@@ -884,11 +882,11 @@ int main(int argc, char **argv) {
 	fprintf(stderr, "The initial simulation will contain %d steps.\n", nstep);
 	int i, j, k, pre;
 	double time;
-	double v[N * NN], vout[N * NN], dv[N * NN];					//v = variables (state and current), vout = output variables, dv = derivatives (fstate)
+	double v[N * nn], vout[N * nn], dv[N * nn];					//v = variables (state and current), vout = output variables, dv = derivatives (fstate)
 	double **y, *xx; 						//results variables, y[1..N][1..NSTEP+1], xx[1..NSTEP+1]
 	extern double current[];				//external variable declaration
-	double weight[NN*NN];
-	scan_(weight, NN*NN, "weights.data");
+	double weight[nn*nn];
+	scan_(weight, nn*nn, "weights.data");
 	
 	fprintf(stderr, "DELAY = %fms.\n", arguments.delay);
 	if (arguments.lowprop) {
@@ -907,7 +905,7 @@ int main(int argc, char **argv) {
 	int dsteps = (int)(arguments.delay / arguments.stepsize);	//number of steps in the delay (i.e. number of elements in the buffer)
 	double* buf[dsteps];
 	for (i = 0; i < dsteps; ++i) {
-		buf[i] = (double*) malloc(sizeof(double) * NN);		//allocates memory for an array of arrays, length depending on the number of neurons in the simulation
+		buf[i] = (double*) malloc(sizeof(double) * nn);		//allocates memory for an array of arrays, length depending on the number of neurons in the simulation
 	}
 	int bufpos = 0;								//holds the position in the buffer that the del  pointer is at
 	del = buf[bufpos];
@@ -925,7 +923,7 @@ int main(int argc, char **argv) {
 	//Allocating memory for the storage arrays, checking if I can, so that I don't run out of memory
 	y = (double**) malloc(sizeof(double*) * (nstep + 1));
 	for (i = 0; i < (nstep + 1); i++) {
-		y[i] = (double*) malloc(sizeof(double) * (N * NN));
+		y[i] = (double*) malloc(sizeof(double) * (N * nn));
 		if (y[i] == NULL) {
 			fprintf(stderr, "Ran out of memory for storage array at y[%d]", i);
 			return 0;
@@ -938,11 +936,11 @@ int main(int argc, char **argv) {
 	} 
 	
 	time = STARTTIME;
-	scan_(v, N*NN, "state.data");				//scanning in initial variables (state variables only) 
+	scan_(v, N*nn, "state.data");				//scanning in initial variables (state variables only) 
 
 	if (arguments.delay >= arguments.stepsize) {
 		for (i = 0; i < (dsteps); ++i) {//sets every double in buffer(s) to be equal to 0
-			for (j = 0; j < NN; ++j) {
+			for (j = 0; j < nn; ++j) {
 					buf[i][j] = 0.0;
 			}
 		}
@@ -950,16 +948,16 @@ int main(int argc, char **argv) {
 
 	
 	iapps[0] = I_APP;
-	for (i = 1; i < NN; ++i) {						//adding heterogeneity through slightly different iapps like mccarthy does
+	for (i = 1; i < nn; ++i) {						//adding heterogeneity through slightly different iapps like mccarthy does
 		iapps[i] = iapps[i - 1] + 0.005;
 	}
 	
 	derivs(time, v, dv, del, weight);
-	rk4(v, dv, (N * NN), time, arguments.stepsize, vout, del, weight);
+	rk4(v, dv, (N * nn), time, arguments.stepsize, vout, del, weight);
 	
 	
 	xx[0] = STARTTIME;		
-	for (i = 0; i < (N * NN); ++i) {
+	for (i = 0; i < (N * nn); ++i) {
 		v[i] = vout[i]; 
 		y[0][i] = v[i];
 		
@@ -982,10 +980,10 @@ int main(int argc, char **argv) {
 		
 		del = buf[bufpos]; //moves the pointer one step ahead in the buffer
 		derivs(time, v, dv, del, weight);										//actually does the step
-		rk4(v, dv, (N * NN), time, arguments.stepsize, vout, del, weight);				//actually does the step
+		rk4(v, dv, (N * nn), time, arguments.stepsize, vout, del, weight);				//actually does the step
 		
 		if (arguments.delay >= arguments.stepsize) {
-			for (j = 0; j < NN; ++j) {								
+			for (j = 0; j < nn; ++j) {								
 				del[j] = vout[S + (N * j)];							//dereferences the delay pointer, and puts the previous y[S] in the same spot
 			}
 		}
@@ -1008,7 +1006,7 @@ int main(int argc, char **argv) {
 			bufpos = (++bufpos)%dsteps;
 		}
 		
-		for (i = 0; i < (N * NN); i++) {
+		for (i = 0; i < (N * nn); i++) {
 			v[i] = vout[i];
 			y[k + 1][i] = v[i];
 		}
