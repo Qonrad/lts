@@ -74,6 +74,7 @@
  * properly able to cat args.txt into parameters to perfectly recreate exact running of specific commit
  get prc and main to use the same derivs and rk4
  note: maybe its the divnn that's causing the difference from lowhigh to now, also population & mycluster?
+ number of spikes difference with old.c is still sort of mysterious
  * 
  */
 
