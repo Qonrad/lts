@@ -41,15 +41,11 @@
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 50 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 10			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
-//#define POPULATION 20		//number of neurons in the whole population
-//#define MYCLUSTER 10		//number of neurons in the simulated neuron's population
 #define True 1
 #define False 0
-#define INTERPOLATE 0
-//#define INTERVAL 200
+#define INTERPOLATE 1
 #define FULLNAME "allvolts.data"
 #define DBIT 0
-//#define DIVNN 0
 #define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
 #define F(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*(1.-(X)/(Y)/2.)) : ((X)/(exp( (X)/ (Y) ) -1)) )
 #define PERTENDTIME 5000	//separate endtime for prc stuff in order to differentiate it from main simulation
@@ -191,9 +187,6 @@ parse_opt (int key, char *arg, struct argp_state *state)
 		case 'l':
 			arguments->lowprop = 1;
 			range_parser(&(arguments->lowstart), &(arguments->lowend), arg);
-			if (DBIT) {
-				fprintf(stderr, "lowstart = %d. lowend = %d\n", arguments->lowstart, arguments->lowend);
-			}
 			break;
 		case 'z':
 			arguments->divnn = 1;
@@ -261,7 +254,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		gsyn = ((time > arguments.lowstart && time < arguments.lowend)) ? LOWPROP_GSYN : G_SYN;
 		tau = ((time > arguments.lowstart && time < arguments.lowend)) ? LOWPROP_TAU : TAUSYN; 
 	}
-	else if (arguments.highprop) {
+	if (arguments.highprop) {	//this should make it such that highprop will override lowprop
 		gsyn = ((time > arguments.highstart && time < arguments.highend)) ? HIGHPROP_GSYN : G_SYN;
 		tau = ((time > arguments.highstart && time < arguments.highend)) ? HIGHPROP_TAU : TAUSYN;
 	}
