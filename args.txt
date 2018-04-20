@@ -1,1 +1,1 @@
---delay=3.5 --lowprop=0-2000 --highprop=2001-5000 --divnn state.data 20 
+--prc=100 --lowprop=0-5000 --delay=3.5 halfin.data 20 

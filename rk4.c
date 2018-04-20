@@ -64,11 +64,9 @@
 //gcc rk4.c -lm && ./a.out && python2 all-view2.py 20 full.data
 
 /*Changes to make
- * make NUMBER_OF_NUERONS a required argument?
  * randomize inputfile
  * properly able to cat args.txt into parameters to perfectly recreate exact running of specific commit
  * diff viewer
- get prc and main to use the same derivs and rk4
  note: maybe its the divnn that's causing the difference from lowhigh to now, also population & mycluster?
  number of spikes difference with old.c is still sort of mysterious
  * 
@@ -641,8 +639,8 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 				if (INTERPOLATE) {
 					flag1 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - arguments.stepsize))) + (time - arguments.stepsize);
 					trace->fphi1 = ((double)(flag1) - (double)(normalperiod)) / (double)(normalperiod);
-					printf("The trace was done at phase %f. The step targeted was %d (time of flag1= %f), and the total number of steps in the unperturbed period was %d (%f ms).\n", trace->phase, targstep, time, psteps, normalperiod);
-					printf("f(phi)1 is %f.\n", trace->fphi1);
+					//printf("The trace was done at phase %f. The step targeted was %d (time of flag1= %f), and the total number of steps in the unperturbed period was %d (%f ms).\n", trace->phase, targstep, time, psteps, normalperiod);
+					//printf("f(phi)1 is %f.\n", trace->fphi1);
 				}
 				else {
 					flag1 = k;
