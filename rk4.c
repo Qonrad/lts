@@ -1,4 +1,3 @@
-//#define NN 20
 #define N 7
 #define C 5
 #define I_NA 0  
@@ -83,8 +82,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <argp.h>
-//#include "defs.h"	//where all of the definitions are
-//#include "funcs.h"	//where all of the functions are
 
 //prcfuncs
 double current[C];	//external current variable, similar to how Canavier did it
@@ -229,7 +226,7 @@ typedef struct Templates {
 	double *volts;
 	double init[N];
 	int bufpos;
-	double *ibuf;//[(int)(arguments.delay / STEPSIZE)];
+	double *ibuf;
 } Template;
 
 void printdarr(double *a, int numelems) {
@@ -262,8 +259,6 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		gsyn = G_SYN;
 		tau = TAUSYN;
 	}
-	
-	//fprintf(stderr, "time = %f, gsyn = %f, tau = %f\n", time, gsyn, tau);
 
 	for (i = 0; i < nn; i++) {
 		
