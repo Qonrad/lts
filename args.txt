@@ -1,1 +1,1 @@
---prc=100 --lowprop=0-5000 --delay=3.5 halfin.data 20 
+--lowprop=0-5000 --delay=3.5 posterfinalstate.data 20 
