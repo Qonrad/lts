@@ -1,1 +1,1 @@
---lowprop=0-2000 --highprop=2000-4700 --etime=4700 --delay=3.5 --divnn posterfinalstate.data 20 
+--highprop=0-10000 --divnn --etime=10000 --delay=3.5 posterfinalstate.data 20 
