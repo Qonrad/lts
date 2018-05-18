@@ -1,1 +1,1 @@
---highprop=0-10000 --divnn --etime=10000 --delay=3.5 posterfinalstate.data 20 
+--highprop=0-10000 --divnn --etime=10000 --delay=3.5 --prc=10 --interval=100 --graph posterfinalstate.data 20 

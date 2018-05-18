@@ -297,8 +297,9 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 					current[I_S] += weight[j + (i * nn)] * y[S + (N * j)]; //sums up products of weight and presynaptic y[S]
 				}
 			}		
-			y[P + (N * i)] = current[I_S] ;	//sets perturbation state variable to synaptic current, doesn't affect simulation, purely for debugging purposes
+			//should the perturbation state variable thing be here instead?
 			current[I_S] *= (arguments.divnn) ? ((gsyn / (nn - 1)) * (y[V + (N * i)] - E_SYN)) : (gsyn * (y[V + (N * i)] - E_SYN)); //multiplies synaptic current by maximum synaptic conductance and other stuff
+			y[P + (N * i)] = current[I_S] ;	//sets perturbation state variable to synaptic current, doesn't affect simulation, purely for debugging purposes
 		}
 		
 		//all of these (except for h) are using a method to prevent a divide by zero error I was encountering
