@@ -75,7 +75,7 @@
  * incorrect prc seems to appear somewhere betwen tags "newdivnn" and "2"
  * tag "2" seems to only add command-line option for clustersize
  * also HEAD seems to be even worse prc-wise than 2 is, so this warrants further investigation
- * maybe branching out directly from newdivnn is warranted?
+ * maybe branching out directly from newdivnn is warranted?.
  */
 
 
