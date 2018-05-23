@@ -104,7 +104,7 @@ static char doc[] =
   "an lts simulation programmed by Conrad Leonik\n";
 
 /* A description of the arguments we accept. */
-static char args_doc[] = "INPUTFILE NUMBER NUMBER_OF_NUERONS";
+static char args_doc[] = "INPUTFILE NUMBER_OF_NUERONS";
 
 /* The options we understand. */
 static struct argp_option options[] = {
