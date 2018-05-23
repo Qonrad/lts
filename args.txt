@@ -1,1 +1,1 @@
---prc=10 --graph --highprop=0-10000 --delay=3.5 --interval=100 --etime=10000 state.data 20 
+--prc=100 --graph --highprop=0-10000 --delay=3.5 --divnn --etime=10000 state.data 20 

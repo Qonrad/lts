@@ -70,6 +70,12 @@
  note: maybe its the divnn that's causing the difference from lowhigh to now, also population & mycluster?
  number of spikes difference with old.c is still sort of mysterious
  * 
+ * 
+ * notes for causing the weird issue. my gitk tags should hopefully be on github
+ * incorrect prc seems to appear somewhere betwen tags "newdivnn" and "2"
+ * tag "2" seems to only add command-line option for clustersize
+ * also HEAD seems to be even worse prc-wise than 2 is, so this warrants further investigation
+ * maybe branching out directly from newdivnn is warranted?
  */
 
 
@@ -797,7 +803,7 @@ int main(int argc, char **argv) {
 	arguments.graph = 0;
 	arguments.divnn = 0;
 	arguments.interval = 100;
-	arguments.clustersize = 0;
+	arguments.clustersize = 10;
 
 	/* Parse our arguments; every option seen by parse_opt will
 	be reflected in arguments. */
