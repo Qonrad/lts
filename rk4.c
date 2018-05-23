@@ -47,7 +47,7 @@
 #define DBIT 0
 #define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
 #define F(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*(1.-(X)/(Y)/2.)) : ((X)/(exp( (X)/ (Y) ) -1)) )
-#define PERTENDTIME 5000	//separate endtime for prc stuff in order to differentiate it from main simulation
+//#define PERTENDTIME 5000	//separate endtime for prc stuff in order to differentiate it from main simulation (seems like a relic of the past?)
 
 //Runge-Kutta Differential Equation Solver, abc
 
@@ -245,13 +245,14 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 	int i, j;
 	extern double *pert;
 	
-	if (arguments.lowprop) {
-		gsyn = ((time > arguments.lowstart && time < arguments.lowend)) ? LOWPROP_GSYN : G_SYN;
-		tau = ((time > arguments.lowstart && time < arguments.lowend)) ? LOWPROP_TAU : TAUSYN; 
-	}
+	
 	if (arguments.highprop) {	//this should make it such that highprop will override lowprop
 		gsyn = ((time > arguments.highstart && time < arguments.highend)) ? HIGHPROP_GSYN : G_SYN;
 		tau = ((time > arguments.highstart && time < arguments.highend)) ? HIGHPROP_TAU : TAUSYN;
+	}
+	else if (arguments.lowprop) { //is the else truly necessary here?
+		gsyn = ((time > arguments.lowstart && time < arguments.lowend)) ? LOWPROP_GSYN : G_SYN;
+		tau = ((time > arguments.lowstart && time < arguments.lowend)) ? LOWPROP_TAU : TAUSYN; 
 	}
 	else {	
 		gsyn = G_SYN;
