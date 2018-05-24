@@ -1,1 +1,1 @@
---prc=100 --graph --highprop=0-10000 --delay=3.5 --divnn --etime=10000 state.data 20 
+--delay=3.5 --lowprop=0-5000 --prc=10 -g --divnn newtest.txt 20 
