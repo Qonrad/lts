@@ -91,7 +91,7 @@
 double current[C];	//external current variable, similar to how Canavier did it
 static double *del;
 double gsyn, tau;
-int nn;
+int nn, population;
 double *iapps;
 static int prcmode;
 static int pertmode;
@@ -287,9 +287,9 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		
 		if (self_connection) {
 			if (arguments.divnn) {
-				gsyn /= nn;
+				gsyn /= population;
 			}
-			current[I_S] =  gsyn * ((y[S] * (arguments.clustersize - 1))+ (y[P] * (nn - arguments.clustersize))) * (y[V] - E_SYN);
+			current[I_S] =  gsyn * ((y[S] * (arguments.clustersize - 1))+ (y[P] * (population - arguments.clustersize))) * (y[V] - E_SYN);
 		}
 
 		else {
@@ -819,6 +819,7 @@ int main(int argc, char **argv) {
 	}
 
 	nn = atoi(arguments.args[1]);
+	population = nn;
 	iapps = malloc(sizeof(double) * nn);
 	
 	gsyn = G_SYN;
