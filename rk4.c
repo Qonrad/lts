@@ -71,11 +71,7 @@
  number of spikes difference with old.c is still sort of mysterious
  * 
  * 
- * notes for causing the weird issue. my gitk tags should hopefully be on github
- * incorrect prc seems to appear somewhere betwen tags "newdivnn" and "2"
- * tag "2" seems to only add command-line option for clustersize
- * also HEAD seems to be even worse prc-wise than 2 is, so this warrants further investigation
- * maybe branching out directly from newdivnn is warranted?.
+ fixed major bug, now main task is to get those state variables carmen wanted out of the code
  */
 
 
