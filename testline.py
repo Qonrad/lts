@@ -1,6 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 import sys
+<<<<<<< HEAD
 print "format is python testline.py prc.data delay period"	
 
 f, ax1= plt.subplots()
@@ -77,3 +78,18 @@ ax1.plot(v[:,0], bu, "g--") 														#drawing line for basin of attraction 
 ax1.plot(v[ycut:,0], y[ycut:], "r--")												#line for 2-cluster stability
 plt.ylim(-0.2, 1.0)
 plt.show()
+=======
+v=np.genfromtxt(sys.argv[1])
+plt.plot(v[:,0], v[:,1],"k-*") 
+x = (np.linspace(0.0, 1.0, num=201)).tolist()
+print x
+ydict = {}
+y = []
+for i in range(len(x)):
+	ydict['x'] = x[i]
+	y.append(eval('(2 * x) - 1'), ydict)
+print ydict
+#~ y = eval('2x-1')
+#~ plt.plot(x, y)  
+#~ plt.show()
+>>>>>>> 9e28c4720c333de062b7131c3b4d59240c94fce0
