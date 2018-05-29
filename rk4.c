@@ -992,7 +992,11 @@ int main(int argc, char **argv) {
 	else {
 		fprintf(stderr, "\n\nSince verbose == 0, v-n.data are not being written Only vfull.data\n\n");
 	}
-	fprintf(stderr,"This simulation counted %d spikes of Neuron[0].\n", spikecount);
+	fprintf(stderr,"This simulation counted %d spikes of Neuron[0].\n", spikecount);\
+	if (arguments.verbose) {
+				fprintf(stderr, "Printing spike times\n");
+				printdarr(sptimes, spikecount);
+			}
 	if (spikecount >= (SAMPLESIZE + OFFSET)) {
 		for (i = OFFSET; i < SAMPLESIZE + OFFSET - 1; ++i) {		//calculates differences between spike times to find each period
 			sumdiffs += sptimes[i + 1] - sptimes[i];
