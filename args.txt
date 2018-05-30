@@ -1,1 +1,1 @@
---delay=3.5 --highprop=0-5000 --divnn --verbose state.data 20 
+--delay=3.5 --highprop=0-5000 --divnn --prc=10 -g state.data 20 
