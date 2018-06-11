@@ -4,7 +4,7 @@ from matplotlib.cm import get_cmap
 
 import sys,os
 if len(sys.argv) < 3:
-	print "USANGE: python {} number_of_neurons datafile datafile ....".format(sys.argv[0])
+	print "USAGE: python {} number_of_neurons datafile datafile ....".format(sys.argv[0])
 	exit(1)
 
 try:
@@ -65,5 +65,5 @@ def kpress(event):
 
 f.canvas.mpl_connect('key_press_event',kpress)
 
-	
+
 plt.show()
