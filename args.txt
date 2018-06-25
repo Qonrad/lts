@@ -1,1 +1,1 @@
---delay=3.25 --highprop=0-5000 --divnn state.data 20 
+--delay=0 --divnn state.data 20 
