@@ -766,7 +766,7 @@ void range_parser(int *start, int *end, const char *range) {
 			return;
 		}
 	}
-	fprintf(stderr, "range could not be parsed. no '-' character was found\nenter ./lts --help for more information\n");
+	fprintf(stderr, "range could not be parsed. no '-' character was found. Enter ./lts --help for more information\n");
 	exit(1);
 	return;
 }
