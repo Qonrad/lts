@@ -22,7 +22,6 @@ class random_state:
 			actmax = self.defmax
 		else:
 			actmax = parmax
-			
 		if pardist is None:
 			actdist = self.defdist
 		else:
