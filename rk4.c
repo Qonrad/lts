@@ -13,7 +13,6 @@
 #define S 5
 #define P 6
 #define CM 1.00 /*uF/cm2*/
-//#define I_APP 1.81 /*uA/cm2*/ //was 1.81 for the prc stuff, experimenting with changing this, risky
 #define I_APP_STEP -3.3
 #define E_NA  50.0
 #define E_K  -100.0
