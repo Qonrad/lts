@@ -1,1 +1,1 @@
---delay=0 --divnn state.data 20 
+--delay=0 --divnn --iapp=2.0 random.data 20 

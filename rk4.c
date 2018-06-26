@@ -13,7 +13,7 @@
 #define S 5
 #define P 6
 #define CM 1.00 /*uF/cm2*/
-#define I_APP 2.0 /*uA/cm2*/ //was 1.81 for the prc stuff, experimenting with changing this, risky
+//#define I_APP 1.81 /*uA/cm2*/ //was 1.81 for the prc stuff, experimenting with changing this, risky
 #define I_APP_STEP -3.3
 #define E_NA  50.0
 #define E_K  -100.0
@@ -120,7 +120,8 @@ static struct argp_option options[] = {
 	{"verbose", 'v', "toggle",		OPTION_ARG_OPTIONAL, "toggles printing out extra data, only prints spike voltages by default (and prc if that's enabled"},
 	{"graph",	'g', "toggle",		OPTION_ARG_OPTIONAL, "toggles the graph option"},
 	{"divnn",	'z', "toggle",		OPTION_ARG_OPTIONAL, "toggles dividing by NN, it DOES NOT by default even though McCarthy does"},
-	{"interval", 'i', "INTERVAL",	0, "can set interval manually, default is 100"},	 
+	{"interval", 'i', "INTERVAL",	0, "can set interval manually, default is 100"},
+	{"iapp",	'a', "APPLIED",		0, "constant background applied current used on LTS neurons, default is 1.81"},	 
 	{ 0 }
 };
 
@@ -142,6 +143,7 @@ struct arguments
   int verbose;
   double delay;
   double stepsize;
+  double iapparg;
   int graph;
   int divnn;
 };
@@ -155,6 +157,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	struct arguments *arguments = state->input;
 
 	switch (key) {
+		case 'a':
+			arguments->iapparg = atof(arg);
+			break;
 		case 'd':
 			arguments->delay = atof(arg);
 			break;
@@ -264,7 +269,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 	for (i = 0; i < nn; i++) {
 		
 		if (i >= I_APP_NEURONS && USE_I_APP) {
-			iapp = (time < I_APP_START || time > I_APP_END) ? I_APP : I_APP_STEP;	
+			iapp = (time < I_APP_START || time > I_APP_END) ? arguments.iapparg : I_APP_STEP;	
 		}
 	
 		else {
@@ -272,7 +277,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 				iapp = iapps[i];
 			}
 			else {
-				iapp = I_APP;
+				iapp = arguments.iapparg;
 			}
 		}
 		
@@ -800,6 +805,7 @@ int main(int argc, char **argv) {
 	arguments.divnn = 0;
 	arguments.interval = 100;
 	arguments.clustersize = 10;
+	arguments.iapparg = 1.81;
 
 	/* Parse our arguments; every option seen by parse_opt will
 	be reflected in arguments. */
@@ -813,6 +819,8 @@ int main(int argc, char **argv) {
 	else {
 		printf("DIVNN IS NOT enabled\n");
 	}
+
+	fprintf(stderr, "Continuously applying %f in applied current.\n", arguments.iapparg);
 
 	nn = atoi(arguments.args[1]);
 	population = nn;
@@ -890,7 +898,7 @@ int main(int argc, char **argv) {
 	}
 
 	
-	iapps[0] = I_APP;
+	iapps[0] = arguments.iapparg;
 	for (i = 1; i < nn; ++i) {						//adding heterogeneity through slightly different iapps like mccarthy does
 		iapps[i] = iapps[i - 1] + 0.005;
 	}
