@@ -1,1 +1,1 @@
---delay=3.25 --divnn --highprop=0-5000 --iapp=2 --prc=10 --graph random.data 20 
+--delay=0 --divnn --highprop=0-5000 --iapp=2 --prc=10 --graph random.data 20 
