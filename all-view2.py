@@ -64,6 +64,5 @@ def kpress(event):
 	f.canvas.draw()
 
 f.canvas.mpl_connect('key_press_event',kpress)
-
-
+plt.savefig("all-view2.svg", format="svg")
 plt.show()
