@@ -64,8 +64,8 @@
 
 /*Changes to make
  * randomize inputfile
- * properly able to cat args.txt into parameters to perfectly recreate exact running of specific commit
- * diff viewer
+ * fix bug with samplesize && offset. need to make it clear how it behaves when they are not met and make it possible
+ * to set them from command line.
  note: maybe its the divnn that's causing the difference from lowhigh to now, also population & mycluster?
  number of spikes difference with old.c is still sort of mysterious
  * 
