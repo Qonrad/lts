@@ -777,6 +777,7 @@ void printargs(int argc, char **argv, const char *file) {
 	sp = fopen(file, "w");
 	for (i = 1; i < argc; ++i) {
 		fprintf(sp, "%s ", argv[i]);
+		//fprintf(stderr, "%s ", argv[i]);
 	}
 	fprintf(sp, "\n");
 	fclose(sp);
@@ -1269,6 +1270,8 @@ int main(int argc, char **argv) {
 		}
 	}	
 	
+	//fprintf(stderr, "argc = %d\n", argc);
+
 	printargs(argc, argv, "args.txt");
 	if (arguments.commit) {
 		system("git commit -a");
