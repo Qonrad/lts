@@ -76,4 +76,6 @@ ax1.plot(sync, syncnum, 'ro')														#point of synchrony stability on the 
 ax1.plot(v[:,0], bu, "g--") 														#drawing line for basin of attraction for unequal time lags
 ax1.plot(v[ycut:,0], y[ycut:], "r--")												#line for 2-cluster stability
 plt.ylim(-0.2, 1.0)
+#plt.savefig('destination_path.eps', format='eps', dpi=1000)
+#plt.savefig("test.svg", format="svg")
 plt.show()
