@@ -121,8 +121,9 @@ static struct argp_option options[] = {
 	{"verbose", 'v', "toggle",		OPTION_ARG_OPTIONAL, "toggles printing out extra data, only prints spike voltages by default (and prc if that's enabled"},
 	{"graph",	'g', "toggle",		OPTION_ARG_OPTIONAL, "toggles the graph option"},
 	{"divnn",	'z', "toggle",		OPTION_ARG_OPTIONAL, "toggles dividing by NN, it DOES NOT by default even though McCarthy does"},
-	{"interval", 'i', "INTERVAL",	0, "can set interval manually, default is 100"},
-	{"iapp",	'a', "APPLIED",		0, "constant background applied current used on LTS neurons, default is 1.81"},	 
+	{"interval",'i', "INTERVAL",	0, "can set interval manually, default is 100"},
+	{"iapp",	'a', "APPLIED",		0, "constant background applied current used on LTS neurons, default is 1.81"},
+	//{"offsample",'o', "OFFSET-SAMPLESIZE",	0,	"samplesize-offset. input as range, but used separately"},	 
 	{ 0 }
 };
 
