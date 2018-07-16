@@ -1,1 +1,1 @@
---delay=0 --divnn --iapp=2 random.data 20 
+--delay=0 --divnn --iapp=2 --lowprop=0-5000 random.data 20 

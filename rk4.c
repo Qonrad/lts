@@ -809,7 +809,7 @@ int main(int argc, char **argv) {
 	/* Parse our arguments; every option seen by parse_opt will
 	be reflected in arguments. */
 	argp_parse (&argp, argc, argv, 0, 0, &arguments);
-
+	printargs(argc, argv, "args.txt");
 	printf ("INPUTFILE = %s\nPRC = %s\nINTERVAL = %d\n", arguments.args[0], arguments.prc ? "yes" : "no", arguments.interval);
 	printf("nn = %d\n", atoi(arguments.args[1]));
 	if (arguments.divnn) {
@@ -1268,8 +1268,6 @@ int main(int argc, char **argv) {
 			system(test);
 		}
 	}	
-	
-	printargs(argc, argv, "args.txt");
 	if (arguments.commit) {
 		system("git commit -a");
 	}
