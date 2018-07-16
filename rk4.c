@@ -886,7 +886,7 @@ int main(int argc, char **argv) {
 	} 
 	
 	time = STARTTIME;
-	scan_(v, N*nn, "state.data");				//scanning in initial variables (state variables only) 
+	scan_(v, N*nn, arguments.args[0]);				//scanning in initial variables (state variables only) 
 
 	if (arguments.delay >= arguments.stepsize) {
 		for (i = 0; i < (dsteps); ++i) {//sets every double in buffer(s) to be equal to 0
