@@ -37,8 +37,8 @@
 #define DO_TRACE 0			//toggles doing trace for a single (or multiple phase perturbations) but each is recorded individually
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
-#define SAMPLESIZE 50 		//number of spikes that are averaged together to give unperturbed period
-#define OFFSET 10			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
+#define SAMPLESIZE 100 		//number of spikes that are averaged together to give unperturbed period
+#define OFFSET 50			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define True 1
 #define False 0
 #define INTERPOLATE 1
@@ -57,7 +57,7 @@
 //Command for compiling and running on macbook
 //gcc-7 rk4.c && ./a.out && python2 all-view2.py 20 full.data
 //latest update
-//gcc-7 -largp rk4.c -o lts && ./lts state.data --prc 100
+//gcc-7 -largp rk4.c -o lts && ./lts INPUTFILE --prc 100
 
 //Command for compiling and running on beowolf
 //gcc rk4.c -lm && ./a.out && python2 all-view2.py 20 full.data
@@ -66,6 +66,8 @@
  * randomize inputfile
  * properly able to cat args.txt into parameters to perfectly recreate exact running of specific commit
  * diff viewer
+ * confirmed current "random" initial condition maker doesn't work
+ * currently state.data is the same as for lowhigh from poster
  note: maybe its the divnn that's causing the difference from lowhigh to now, also population & mycluster?
  number of spikes difference with old.c is still sort of mysterious
  * 
@@ -343,7 +345,7 @@ void scan_(double *Y, int n, const char *filename) {
 	sp = fopen(filename,"r");
 	for (i = 0; i < n; ++i)
 		if (fscanf(sp, "%lf\n", &Y[i]) != 1){
-			fprintf(stderr, "Not enough variables in state.data file.\nNeed %d only %d given\n", N*nn, i-1);
+			fprintf(stderr, "Not enough variables in INPUTFILE.\nNeed %d only %d given\n", N*nn, i-1);
 			exit(1);
 		}
 	
@@ -829,6 +831,9 @@ int main(int argc, char **argv) {
 	tau = TAUSYN;
 	//Variables to do with simulation
 	long int nstep = (arguments.etime - STARTTIME) / arguments.stepsize;	// This assumes the endtime-starttime is evenly divisible by the stepsize, which should always be true I think
+	//currently it seems like this nstep is reused for prc initial simulation for creating the template
+	//this hasn't really created a problem yet, and it isn't likely to since that simulation will almost always need to be longer
+	//but it may be important to keep in mind regardless
 	fprintf(stderr, "The initial simulation will contain %d steps.\n", nstep);
 	int i, j, k, pre;
 	double time;
@@ -1085,12 +1090,12 @@ int main(int argc, char **argv) {
 		extern double *pert;
 	
 		time = STARTTIME;
-		scan_(v, N, "state.data");				//scanning in initial variables (state variables only)
+		scan_(v, N, arguments.args[0]);				//scanning in initial variables (state variables only)
 
 		fprintf(stderr, "Here are the starting variables for the single self-connected prc neuron.\n");
 		printdarr(v, N);
 
-		fprintf(stderr, "-scanning in first 7 variables of state.data\n");
+		fprintf(stderr, "-scanning in first 7 variables of INPUTFILE\n");
 		fprintf(stderr, "-this PRC might not be accurate unless the initial conditions in the first 7 are representative of all the others\n"); 
 		
 		for (i = 0; i < (dsteps); ++i) {//sets every double in buffer to be equal to the steady state (initial) voltage that was just scanned in
@@ -1204,7 +1209,7 @@ int main(int argc, char **argv) {
 		if (arguments.verbose) {
 			dump_(vout);
 		}
-		fprintf(stderr, "This simulation counted %d spikes in all.\n", spikecount);
+		fprintf(stderr, "The preliminary PRC simulation counted %d spikes in all.\n", spikecount);
 		if (spikecount >= (SAMPLESIZE + OFFSET)) {
 			for (i = OFFSET; i < SAMPLESIZE + OFFSET - 1; ++i) {		//calculates differences between spike times to find each period
 				sumdiffs += sptimes[i + 1] - sptimes[i];
@@ -1218,7 +1223,7 @@ int main(int argc, char **argv) {
 			fprintf(stderr, "The standard deviation is %f.\n", periodsd);
 		}
 		else {
-			fprintf(stderr, "There are not enough spikes to account for sample size and offset or something else has gone wrong.\n");
+			fprintf(stderr, "There are not enough spikes to account for sample size and offset in the PRC preliminary simulation.\n");
 			fprintf(stderr, "Killing because it hasn't passed the test of spikecount >= (SAMPLESIZE + OFFSET).\n");
 			fprintf(stderr, "v.data-n.data as well as end.data were still written, but no trace or prc processes occured.\n");
 			return 0;
