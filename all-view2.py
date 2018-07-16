@@ -39,7 +39,7 @@ for ixd, data in enumerate(datas):
 			spk = [ (data[spk[0],0],i) ] + [ (data[k,0],i) for p,k in zip(spk[:-1],spk[1:]) if p != k-1  ]
 			spks += spk
 	spks = array(spks)
-	plt.plot(spks[:,0], spks[:,1], ".",mfc=c,mec=c)
+	plt.plot(spks[:,0], spks[:,1], "|",mfc=c,mec=c)
 
 neuron = 0
 curves = []
