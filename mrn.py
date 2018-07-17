@@ -48,12 +48,12 @@ class random_state:
 			print("something is wrong")
 			return -1
 
-v = random_state(-100, 50, "uniform")
-m = random_state(0, 1, "uniform")
-h = random_state(0, 1, "uniform")
-nv = random_state(0, 1, "uniform")
+v = random_state(-60, -30, "uniform")
+m = random_state(0.2, 0.8, "uniform")
+h = random_state(0.2, 0.8, "uniform")
+nv = random_state(0.2, 0.8, "uniform")
 mn = random_state(0, 1, "val", defval=0)
-s = random_state(0, 1, "uniform")
+s = random_state(0, 1, "val", defval=0)
 p = random_state(0, 1, "val", defval=0)
 
 vout = v.output(n)
