@@ -51,7 +51,7 @@ class random_state:
 v = random_state(-60, -30, "uniform")
 m = random_state(0.2, 0.8, "uniform")
 h = random_state(0.2, 0.8, "uniform")
-nv = random_state(0.2, 0.8, "uniform")
+nv = random_state(0, 1, "val", defval=0)
 mn = random_state(0, 1, "val", defval=0)
 s = random_state(0, 1, "val", defval=0)
 p = random_state(0, 1, "val", defval=0)
