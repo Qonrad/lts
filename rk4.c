@@ -34,7 +34,7 @@
 #define HIGHPROP_GSYN 0.5
 #define HIGHPROP_TAU 20
 #define STARTTIME 0
-#define DO_TRACE 0			//toggles doing trace for a single (or multiple phase perturbations) but each is recorded individually
+//#define DO_TRACE 1			//toggles doing trace for a single (or multiple phase perturbations) but each is recorded individually
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define SAMPLESIZE 100 		//number of spikes that are averaged together to give unperturbed period
@@ -123,7 +123,7 @@ static struct argp_option options[] = {
 	{"divnn",	'z', "toggle",		OPTION_ARG_OPTIONAL, "toggles dividing by NN, it DOES NOT by default even though McCarthy does"},
 	{"interval",'i', "INTERVAL",	0, "can set interval manually, default is 100"},
 	{"iapp",	'a', "APPLIED",		0, "constant background applied current used on LTS neurons, default is 1.81"},
-	//{"offsample",'o', "OFFSET-SAMPLESIZE",	0,	"samplesize-offset. input as range, but used separately"},	 
+	{"trace",	't', "PHASE",		0, "do a trace of a single PRC perturbation simulation, argument is phase of perturbation, normalized from 0 to 1"},
 	{ 0 }
 };
 
@@ -148,6 +148,8 @@ struct arguments
   double iapparg;
   int graph;
   int divnn;
+  int trace;
+  double phase;
 };
 
 /* Parse a single option. */
@@ -197,6 +199,10 @@ parse_opt (int key, char *arg, struct argp_state *state)
 			break;
 		case 'i':
 			arguments->interval = atof(arg);
+			break;
+		case 't':
+			arguments->phase = atof(arg);
+			arguments->trace = 1;
 			break;
 		case ARGP_KEY_ARG:
 			if (state->arg_num >= 2)
@@ -823,6 +829,7 @@ int main(int argc, char **argv) {
 	}
 
 	fprintf(stderr, "Continuously applying %f in applied current.\n", arguments.iapparg);
+	fprintf(stderr, "would do trace at phase %f\n", arguments.phase);
 
 	nn = atoi(arguments.args[1]);
 	population = nn;
@@ -1041,7 +1048,7 @@ int main(int argc, char **argv) {
 	free(iapps);
 
 	//Starting PRC simulation, if requested
-	if (arguments.prc || DO_TRACE) {
+	if (arguments.prc || arguments.trace) {
 
 		nn = 1;
 		self_connection = 1;
@@ -1237,25 +1244,21 @@ int main(int argc, char **argv) {
 		if (arguments.prc) {
 			prc(spike, arguments.interval, normalperiod);
 		}
-		if (DO_TRACE) {
+		if (arguments.trace) {
+			/*
 			Phipair test;
 			test.phase = -1.0;
 			if (DBIT) {
 				fprintf(stderr, "test.fphi1 = %f\n", test.fphi1);
 			}
 			pertsim(normalperiod, spike, &test, 1, "unpert");
+			*/
+			printf("Performing trace at phase %f of the perturbation simulation.\n", arguments.phase);
 			Phipair trace;
-			trace.phase = 0.0;
-			pertsim(normalperiod, spike, &trace, 1, "0");
-			trace.phase = 0.5;
-			pertsim(normalperiod, spike, &trace, 1, "0.5");
-			trace.phase = 0.6;
-			pertsim(normalperiod, spike, &trace, 1, "0.6");
-			
-			test.fphi1 = 0.0;
-			test.fphi2 = 0.0;
+			trace.phase = arguments.phase;
+			pertsim(normalperiod, spike, &trace, 1, "trace");
 			if (DBIT) {
-				fprintf(stderr, "test.fphi1 = %f\n", test.fphi1);	
+				//fprintf(stderr, "test.fphi1 = %f\n", test.fphi1);	
 				fprintf(stderr, "trace.fphi1 = %f\n", trace.fphi1);
 			}	
 		}
