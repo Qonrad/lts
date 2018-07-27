@@ -337,7 +337,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 				dydx[P] = 2 * (1 + tanh(*pert / 4.0)) * (1 - y[P]) - y[P] / tau;
 			}
 			else {
-				dydx[P] = 2 * (1 + tanh((THRESHOLD) / 4.0)) * (1 - y[P]) - y[P] / tau;	//not sure why THRESHOLD is being used here?
+				dydx[P] = 2 * (1 + tanh((STHRESHOLD) / 4.0)) * (1 - y[P]) - y[P] / tau;	//not sure why THRESHOLD is being used here?
 			}
 		}
 		else {
