@@ -34,9 +34,9 @@
 #define HIGHPROP_GSYN 0.5
 #define HIGHPROP_TAU 20
 #define STARTTIME 0
-#define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
-#define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
-#define PRCTHRESH -14.0		//attempting to fix the problem where PRC is incorrect b/c neuron crosses -50 but doesn't actaully spike
+#define THRESHOLD -14.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
+#define STHRESHOLD -14.0	//threshold used to measure just the spike, not the period between spikes
+#define PRCTHRESH -10.0		//attempting to fix the problem where PRC is incorrect b/c neuron crosses -50 but doesn't actaully spike
 #define SAMPLESIZE 100 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 50			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define True 1
@@ -653,10 +653,6 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 			bufpos = 0;
 		}
 
-		if (k == targstep) {
-			fprintf(stderr, "Perturbing now at step %d\nCurrently v[0] = %f and vout[0] = %f\n", targstep, v[0], vout[0]);
-		}
-
 		if (pertmode) {
 				if (pertpos < spike.steps - 1) {
 					pertpos++;
@@ -671,8 +667,10 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 			//THRESHOLD is where we consider the beginning of the spike, so the time it is crossed is important
 			temp_flag = INTERPOLATE ? ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - arguments.stepsize))) + (time - arguments.stepsize) : (double)(k); //storing the time of the THRESHOLD crossing in case it's a real spike
 			//this should just be overriden in the case that it was a false alarm, though
-			fprintf(stderr, "crossed threshold right before time=%f, interpolated to %f\n", time, temp_flag);
-			fprintf(stderr, "Currently time = %f v[0] = %f and vout[0] = %f\n", time, v[0], vout[0]);
+			if (DBIT) {
+				fprintf(stderr, "crossed threshold right before time=%f, interpolated to %f\n", time, temp_flag);
+				fprintf(stderr, "Currently time = %f v[0] = %f and vout[0] = %f\n", time, v[0], vout[0]);
+			}
 		}
 		else if (vout[0] >= PRCTHRESH && v[0] < PRCTHRESH) {//if this condition is met, then the earlier THRESHOLD crossing was
 			//not a false alarm
@@ -681,60 +679,7 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 				++flagnum;					//increments flagnum so the next spike will get to be in its proper place
 				temp_flag = 0.0;			//resets flagnum to 0.0 to ease problem detection
 			}
-
-			else {
-				fprintf(stderr, "Detected crossing of PRCTHRESH without crossing THRESHOLD when perturbing at phase %f\n",trace->phase);
-			}
-			
 		}
-		/*
-		if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 == 0.0 && trace->phase >= 0.0) {
-				
-				//looking at this a while after I wrote it, this entire mechanism of detecting spikes
-				//could almost definitely be improved
-				if (INTERPOLATE) {
-					flag1 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - arguments.stepsize))) + (time - arguments.stepsize);
-					trace->fphi1 = ((double)(flag1) - (double)(normalperiod)) / (double)(normalperiod);
-					//printf("The trace was done at phase %f. The step targeted was %d (time of flag1= %f), and the total number of steps in the unperturbed period was %d (%f ms).\n", trace->phase, targstep, time, psteps, normalperiod);
-					//printf("f(phi)1 is %f.\n", trace->fphi1);
-				}
-			temp_flag = k;
-		}
-		
-		else if (temp_flag != 0 && vout[0] >= PRCTHRESH && v[0] < PRCTHRESH) { //checking if it's REALLY a spike and not a trick
-			flag1 = temp_flag;
-			trace->fphi1 = ((double)(temp_flag) - (double)(psteps))/ (double)(psteps);
-			temp_flag = 0;
-		}
-						
-
-					/*
-					this stuff is the original code. I am adding new code here to try to solve the PRC problem 
-					of it the neuron going over threshold but not actually spiking, causing inaccurate PRC
-					I am using PRCTHRESH to do this. This definitely also broke interpolation for PRC stuff
-					flag1 = k;
-					trace->fphi1 = ((double)(k) - (double)(psteps))/ (double)(psteps);
-				
-		
-		else if (flag && vout[0] >= THRESHOLD && v[0] < THRESHOLD && flag1 != 0.0 && flag2 == 0.0) {
-				/*
-				if (INTERPOLATE) {
-					flag2 = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - arguments.stepsize))) + (time - arguments.stepsize);
-					trace->fphi2 = ((double)(flag2) - (double)(flag1) - (double)(normalperiod))/ (double)(normalperiod);
-				}
-				
-			temp_flag = k;
-		}
-		else if (temp_flag != 0 && vout[0] >= PRCTHRESH && v[0] < PRCTHRESH) {
-			flag2 = temp_flag;
-			trace->fphi2 = ((double)(temp_flag) - (double)(psteps))/ (double)(psteps);
-			temp_flag = 0;
-		}
-					/*
-					original code
-					flag2 = k;
-					trace->fphi2 = ((double)(k) - (double)(flag1))/ (double)(psteps);
-					*/
 
 		for (i = 0; i < N; i++) {
 			v[i] = vout[i];
@@ -744,14 +689,14 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 	if (INTERPOLATE) {
 		trace->fphi1 = ((double)(flags[0]) - (double)(normalperiod)) / (double)(normalperiod);
 		trace->fphi2 = ((double)(flags[1]) - (double)(flags[0]) - (double)(normalperiod))/ (double)(normalperiod);
-		printf("The trace was done at phase %f (time = %f). The step targeted was %d (time of flag1= %f), and the total number of steps in the unperturbed period was %d (%f ms).\n", trace->phase, targstep, ((targstep - 1) * arguments.stepsize),((double)(flags[0])), psteps, normalperiod);
-		printf("f(phi)1 is %f.\n", trace->fphi1);
 	}
 	else {
 		trace->fphi1 = ((double)(flags[0]) - (double)(psteps))/ (double)(psteps);
 		trace->fphi2 = ((double)(flags[1]) - (double)(psteps))/ (double)(psteps);	
 	}
 	if (DBIT) {
+		printf("The trace was done at phase %f (time = %f). time of flag1= %f, and the total number of steps in the unperturbed period was %d (%f ms).\n", trace->phase, targstep, ((targstep - 1) * arguments.stepsize),((double)(flags[0])), psteps, normalperiod);
+		printf("f(phi)1 is %f.\n", trace->fphi1);
  		printf("targstep = %d\n", targstep);
  	}
 	if (tracedata) {
@@ -1207,7 +1152,7 @@ int main(int argc, char **argv) {
 				if (spikecount < (SAMPLESIZE + OFFSET)) {
 					if (INTERPOLATE) {
 						sptimes[spikecount] = ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - arguments.stepsize))) + (time - arguments.stepsize);
-						vout[0] = -50.0; //fudging the interpolated value to the most recent v[0] value so that it exactly matches the spike template
+						vout[0] = THRESHOLD; //fudging the interpolated value to the most recent v[0] value so that it exactly matches the spike template
 					}
 					else {
 						sptimes[spikecount] = time;
@@ -1282,6 +1227,9 @@ int main(int argc, char **argv) {
 				y[k + 1][i] = v[i];
 			}
 		}
+
+		makedata(y, xx, nstep, V, "v.data");
+
 		if (arguments.verbose) {
 			makedata(y, xx, nstep, V, "v.data");
 			makedata(y, xx, nstep, M, "m.data");
