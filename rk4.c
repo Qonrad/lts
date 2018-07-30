@@ -1177,7 +1177,7 @@ int main(int argc, char **argv) {
 					else {
 						fthresh = time;
 					}
-					spike.init[0] = -50.0;
+					spike.init[0] = STHRESHOLD;
 					printf("Using variables at time %f (interpolated time %f) for start of spike template.\n", time, fthresh);
 					if (DBIT) {
 						printf("Current state variables, except voltage is interpolated to 0.\n");
