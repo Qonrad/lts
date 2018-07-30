@@ -677,7 +677,7 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 				}
 
 				else {
-					printf("Weirdness occured when perturbing at phase %f\n",trace->phase);
+					printf("Detected crossing of PRCTHRESH without crossing THRESHOLD when perturbing at phase %f\n",trace->phase);
 				}
 				
 			}
