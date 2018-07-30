@@ -34,7 +34,6 @@
 #define HIGHPROP_GSYN 0.5
 #define HIGHPROP_TAU 20
 #define STARTTIME 0
-//#define DO_TRACE 1			//toggles doing trace for a single (or multiple phase perturbations) but each is recorded individually
 #define THRESHOLD -50.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -50.0	//threshold used to measure just the spike, not the period between spikes
 #define PRCTHRESH -14.0		//attempting to fix the problem where PRC is incorrect b/c neuron crosses -50 but doesn't actaully spike
@@ -740,6 +739,8 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 	if (INTERPOLATE) {
 		trace->fphi1 = ((double)(flags[0]) - (double)(normalperiod)) / (double)(normalperiod);
 		trace->fphi2 = ((double)(flags[1]) - (double)(flags[0]) - (double)(normalperiod))/ (double)(normalperiod);
+		printf("The trace was done at phase %f. The step targeted was %d (time of flag1= %f), and the total number of steps in the unperturbed period was %d (%f ms).\n", trace->phase, targstep, ((double)(flags[0])), psteps, normalperiod);
+		printf("f(phi)1 is %f.\n", trace->fphi1);
 	}
 	else {
 		trace->fphi1 = ((double)(flags[0]) - (double)(psteps))/ (double)(psteps);
@@ -886,7 +887,8 @@ int main(int argc, char **argv) {
 	be reflected in arguments. */
 	argp_parse (&argp, argc, argv, 0, 0, &arguments);
 	printargs(argc, argv, "args.txt");
-	printf ("INPUTFILE = %s\nPRC = %s\nINTERVAL = %d\n", arguments.args[0], arguments.prc ? "yes" : "no", arguments.interval);
+	printf("INPUTFILE = %s\nPRC = %s\nINTERVAL = %d\n", arguments.args[0], arguments.prc ? "yes" : "no", arguments.interval);
+	printf("Main simulation = %s\n", (!arguments.onlyprc) ? "yes" : "no");
 	printf("nn = %d\n", atoi(arguments.args[1]));
 	if (arguments.divnn) {
 		printf("DIVNN IS enabled\n");
@@ -1173,7 +1175,7 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "Here are the starting variables for the single self-connected prc neuron.\n");
 		printdarr(v, N);
 
-		fprintf(stderr, "-scanning in first 7 variables of INPUTFILE\n");
+		fprintf(stderr, "-scanning in first 7 variables of INPUTFILE=%s\n", arguments.args[0]);
 		fprintf(stderr, "-this PRC might not be accurate unless the initial conditions in the first 7 are representative of all the others\n"); 
 		
 		for (i = 0; i < (dsteps); ++i) {//sets every double in buffer to be equal to the steady state (initial) voltage that was just scanned in
