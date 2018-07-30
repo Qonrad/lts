@@ -36,12 +36,13 @@
 #define STARTTIME 0
 #define THRESHOLD -14.0		//the voltage at which it counts a spike has occured, used to measure both nonperturbed and perturbed period for PRC
 #define STHRESHOLD -14.0	//threshold used to measure just the spike, not the period between spikes
-#define PRCTHRESH -10.0		//attempting to fix the problem where PRC is incorrect b/c neuron crosses -50 but doesn't actaully spike
+#define PRCTHRESH -14.0		//attempting to fix the problem where PRC is incorrect b/c neuron crosses -50 but doesn't actaully spike
 #define SAMPLESIZE 100 		//number of spikes that are averaged together to give unperturbed period
 #define OFFSET 50			//number of spikes that are skipped to allow the simulation to "cool down" before it starts measuring the period
 #define True 1
 #define False 0
 #define INTERPOLATE 1
+#define OLDPRC 1
 #define FULLNAME "allvolts.data"
 #define DBIT 0
 #define G(X,Y) ( (fabs((X)/(Y))<1e-6) ? ((Y)*((X)/(Y)/2. - 1.)) : ((X)/(1. - exp( (X)/ (Y) ))) )
@@ -667,12 +668,19 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 			//THRESHOLD is where we consider the beginning of the spike, so the time it is crossed is important
 			temp_flag = INTERPOLATE ? ((((THRESHOLD) - v[0]) / (vout[0] - v[0])) * (time - (time - arguments.stepsize))) + (time - arguments.stepsize) : (double)(k); //storing the time of the THRESHOLD crossing in case it's a real spike
 			//this should just be overriden in the case that it was a false alarm, though
+			
+			if (OLDPRC) {
+				flags[flagnum] = temp_flag;	//puts spiketime in its proper place within flags
+				++flagnum;					//increments flagnum so the next spike will get to be in its proper place
+				temp_flag = 0.0;
+			}
+
 			if (DBIT) {
 				fprintf(stderr, "crossed threshold right before time=%f, interpolated to %f\n", time, temp_flag);
 				fprintf(stderr, "Currently time = %f v[0] = %f and vout[0] = %f\n", time, v[0], vout[0]);
 			}
 		}
-		else if (vout[0] >= PRCTHRESH && v[0] < PRCTHRESH) {//if this condition is met, then the earlier THRESHOLD crossing was
+		else if (vout[0] >= PRCTHRESH && v[0] < PRCTHRESH && (!OLDPRC)) {//if this condition is met, then the earlier THRESHOLD crossing was
 			//not a false alarm
 			if (temp_flag != 0.0) {//it must cross the preliminary threshold to count as a spike
 				flags[flagnum] = temp_flag;	//puts spiketime in its proper place within flags
