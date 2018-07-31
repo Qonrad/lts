@@ -839,6 +839,7 @@ int main(int argc, char **argv) {
 	arguments.clustersize = 10;
 	arguments.iapparg = 1.81;
 	arguments.onlyprc = 0;
+	arguments.trace = 0;
 
 	/* Parse our arguments; every option seen by parse_opt will
 	be reflected in arguments. */
@@ -853,10 +854,11 @@ int main(int argc, char **argv) {
 	else {
 		printf("DIVNN IS NOT enabled\n");
 	}
-
+	
 	fprintf(stderr, "Continuously applying %f in applied current.\n", arguments.iapparg);
-	fprintf(stderr, "would do trace at phase %f\n", arguments.phase);
-
+	if (arguments.trace) {
+		fprintf(stderr, "would do trace at phase %f\n", arguments.phase);
+	}
 	nn = atoi(arguments.args[1]);
 	population = nn;
 	iapps = malloc(sizeof(double) * nn);
