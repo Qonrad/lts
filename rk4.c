@@ -97,6 +97,29 @@ double *pert;
 double pweight = 1;
 int self_connection = 0;
 
+void range_parser(int *start, int *end, const char *range) {
+	char input[21];
+	int i;
+	char s[10];
+	char e[10];
+	strcpy(input, range);
+	int len = strlen(range);
+	for (i = 0; i < len; ++i) {
+		if (input[i] == '-') {
+			strcpy(e, &input[i + 1]);
+			input[i] = '\0';
+			strcpy(s, input);
+			//printf("%s\n", s);
+			//printf("%s\n", e);
+			*start = atoi(s);
+			*end = atoi(e);
+			return;
+		}
+	}
+	fprintf(stderr, "range could not be parsed. no '-' character was found. Enter ./lts --help for more information\n");
+	exit(1);
+	return;
+}
 
 const char *argp_program_version =
   "lts simulation 1.0";
@@ -703,7 +726,7 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 		trace->fphi2 = ((double)(flags[1]) - (double)(psteps))/ (double)(psteps);	
 	}
 	if (DBIT) {
-		printf("The trace was done at phase %f (time = %f). time of flag1= %f, and the total number of steps in the unperturbed period was %d (%f ms).\n", trace->phase, targstep, ((targstep - 1) * arguments.stepsize),((double)(flags[0])), psteps, normalperiod);
+		printf("The trace was done at phase %f (time = %f). time of flag1= %f, and the total number of steps in the unperturbed period was %d (%f ms).\n", trace->phase, ((targstep - 1) * arguments.stepsize),((double)(flags[0])), psteps, normalperiod);
 		printf("f(phi)1 is %f.\n", trace->fphi1);
  		printf("targstep = %d\n", targstep);
  	}
@@ -781,30 +804,6 @@ void makeunpert(double** y, double *xx, int normalperiod, int startstep, int rea
 	fclose(fp);
 }
 
-void range_parser(int *start, int *end, const char *range) {
-	char input[21];
-	int i;
-	char s[10];
-	char e[10];
-	strcpy(input, range);
-	int len = strlen(range);
-	for (i = 0; i < len; ++i) {
-		if (input[i] == '-') {
-			strcpy(e, &input[i + 1]);
-			input[i] = '\0';
-			strcpy(s, input);
-			//printf("%s\n", s);
-			//printf("%s\n", e);
-			*start = atoi(s);
-			*end = atoi(e);
-			return;
-		}
-	}
-	fprintf(stderr, "range could not be parsed. no '-' character was found. Enter ./lts --help for more information\n");
-	exit(1);
-	return;
-}
-
 void printargs(int argc, char **argv, const char *file) {
 	int i;
 	FILE *fopen(),*sp;
@@ -875,7 +874,7 @@ int main(int argc, char **argv) {
 	double **y, *xx; 						//results variables, y[1..N][1..NSTEP+1], xx[1..NSTEP+1]
 	extern double current[];				//external variable declaration
 	if (!arguments.onlyprc) {
-		fprintf(stderr, "The initial main simulation will contain %d steps.\n", nstep);
+		fprintf(stderr, "The initial main simulation will contain %ld steps.\n", nstep);
 		double weight[nn*nn];
 		scan_(weight, nn*nn, "weights.data");
 		
@@ -1197,7 +1196,7 @@ int main(int argc, char **argv) {
 					if (DBIT) {
  						printf("Buffer array.\n");
 						printdarr(prcbuf, dsteps);
-						printf("bufpos = %f\n", bufpos);
+						printf("bufpos = %d\n", bufpos);
 					}
 					
 					for (i = 0; i < dsteps; ++i) {
@@ -1207,7 +1206,7 @@ int main(int argc, char **argv) {
 					if (DBIT) {
 						printf("Done copying. spike.ibuf\n");
 						printdarr(spike.ibuf, dsteps);
-						printf("spike.bufpos = %f\n", spike.bufpos);
+						printf("spike.bufpos = %d\n", spike.bufpos);
 					}
 				}
 				else if (fthresh != -1.0 && sndthresh == -1.0 && vout[0] <= STHRESHOLD && v[0] > STHRESHOLD) {
