@@ -48,7 +48,9 @@ np.vectorize(slopeonprc)
 
 #calculations
 y = (2. * v[:,0]) - 1. - (2. * (delay / period))									#line for 2-cluster stability
-bu = prc(1 - v[:,0] + v[:,1] + 2. * delay / period)									#basin of attraction for unequal time lags, formula f(1 - phi + f(phi) + 2 * delay / period
+bu = prc(1 - v[:,0] + v[:,1] + (2. * delay / period))								#basin of attraction for unequal time lags, formula f(1 - phi + f(phi) + (2 * delay / period))
+intersidxbu = np.where(np.diff(np.sign(bu - v[:,1])) != 0)[0]						#hopefully index of array holding line unequal time lags immediately BEFORE intersection w/ prc
+intersbu = linterp((intersidxbu + intersidxbu + 1) / 2., intersidxbu, y[intersidxbu], intersidxbu + 1, y[intersidxbu + 1])
 sync = delay/period																	#x coordinate of the point for synchrony stability
 if delay != 0: 
 	syncnum = prc(sync)																#y coordinate of the point for synchrony stability
@@ -56,10 +58,27 @@ else:
 	syncnum = v[0][1]
 intersidx = np.where(np.diff(np.sign(y - v[:,1])) != 0)[0]							#index of array holding line 2-cluster stability immediately BEFORE intersection w/ prc
 inters = linterp((intersidx + intersidx + 1) / 2., intersidx, y[intersidx], intersidx + 1, y[intersidx + 1])
-print "line for 2-cluster stability is detected to intersect with prc at these points:\n", np.dstack((v[:,0][intersidx], inters))
+print "line for 2-cluster stability, using formula (2 * phi - 1 - (2 * (delay/period)), is detected to intersect with PRC at these sets of coordinates:\n", np.dstack((v[:,0][intersidx], inters))
 ycut = np.where(y >= np.amin(v[:,1]))[0][0]											#cutting off y so that it doesn't go below the min value of f(phi)
 slope = slopeonprc(intersidx)														#approximate slope of the prc on the point that it intersects with the line for 2-cluster stability
 print "slope of prc where it intersects with line for 2-cluster stability\n", slope
+print "curve is formula f(1 - phi + f(phi) + (2 * delay / period))"
+print "curve intersects with PRC at these sets of coordinates:\n", np.dstack((v[:,0][intersidxbu], intersbu))
+#print "v[0][1] = f(0) is", v[0][1], "v[len(v) - 1][1] = f(1) is", v[len(v) - 1][1]
+syncwd = 1 - v[0][1] - v[len(v) - 1][1]
+print "testing -1 < 1 - f(0) - f(1) < 1"
+print "-1 <", syncwd, "< 1"
+if -1 < syncwd and syncwd < 1:
+	print "yes, so synchrony with delay should be stable"
+else:
+	print "no, so synchrony should not be stabilized by delay"
+print "testing -1 < (1 - f(0)) * (1- f(1)) < 1"
+syncwnd = (1 - v[0][1]) * (1 - v[len(v) - 1][1])
+print "-1 <", syncwnd, "< 1"
+if -1 < syncwnd and syncwnd < 1:
+	print "yes, so synchrony with no delay should be stable"
+else:
+	print "no, so synchrony without delay should not be stable"
 
 """
 print np.arange(0, len(v[:,0]) - 1, 1)
