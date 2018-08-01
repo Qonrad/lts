@@ -631,7 +631,9 @@ void pertsim(double normalperiod, Template spike, Phipair *trace, int tracedata,
 			dv[i] = 0.0;
 			v[i] = 0.0;
 			vout[i] = 0.0;
-			current[i] = 0.0;
+			if (i < C) {
+				current[i] = 0.0;
+			}
 	}
 	
 	//~ printf("\n\n\n\nAttempting to use template within pertsim!\n");
