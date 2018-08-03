@@ -1,7 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 import sys
-print "format is python testline.py prc.data delay period"	
+print "format is python testline.py prc.data delay period"
 
 f, ax1= plt.subplots()
 v=np.genfromtxt(sys.argv[1]) #v is a 2 * (INTERVAL + 1) array of the prc data, [[0, 0.2], [0.01, 0.21]...[1, 0.9]]
@@ -52,12 +52,13 @@ bu = prc(1 - v[:,0] + v[:,1] + (2. * delay / period))								#basin of attractio
 intersidxbu = np.where(np.diff(np.sign(bu - v[:,1])) != 0)[0]						#hopefully index of array holding line unequal time lags immediately BEFORE intersection w/ prc
 intersbu = linterp((intersidxbu + intersidxbu + 1) / 2., intersidxbu, y[intersidxbu], intersidxbu + 1, y[intersidxbu + 1])
 sync = delay/period																	#x coordinate of the point for synchrony stability
-if delay != 0: 
+if delay != 0:
 	syncnum = prc(sync)																#y coordinate of the point for synchrony stability
 else:
 	syncnum = v[0][1]
 intersidx = np.where(np.diff(np.sign(y - v[:,1])) != 0)[0]							#index of array holding line 2-cluster stability immediately BEFORE intersection w/ prc
 inters = linterp((intersidx + intersidx + 1) / 2., intersidx, y[intersidx], intersidx + 1, y[intersidx + 1])
+print "intrinsic period is", period
 print "line for 2-cluster stability, using formula (2 * phi - 1 - (2 * (delay/period)), is detected to intersect with PRC at these sets of coordinates:\n", np.dstack((v[:,0][intersidx], inters))
 ycut = np.where(y >= np.amin(v[:,1]))[0][0]											#cutting off y so that it doesn't go below the min value of f(phi)
 slope = slopeonprc(intersidx)														#approximate slope of the prc on the point that it intersects with the line for 2-cluster stability
