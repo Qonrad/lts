@@ -1,12 +1,13 @@
 import numpy as np
 from matplotlib import pyplot as plt
 import sys
-print "format is python testline.py prc.data delay period"
+print "format is python testline.py prc1.data prc2.data delay period"
 
 f, ax1= plt.subplots()
 v=np.genfromtxt(sys.argv[1]) #v is a 2 * (INTERVAL + 1) array of the prc data, [[0, 0.2], [0.01, 0.21]...[1, 0.9]]
-delay = float(sys.argv[2])
-period = float(sys.argv[3])
+vs=np.genfromtxt(sys.argv[2]) #vs is the same except for the prc2.data
+delay = float(sys.argv[3])
+period = float(sys.argv[4])
 
 """
 2do

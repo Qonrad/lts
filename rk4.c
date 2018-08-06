@@ -1308,7 +1308,7 @@ int main(int argc, char **argv) {
 
 		if (arguments.graph) {
 			char test[300];
-			sprintf(test, "python2 testline.py prc1.data %f %f", arguments.delay, normalperiod);
+			sprintf(test, "python2 testline.py prc1.data prc2.data %f %f", arguments.delay, normalperiod);
 			fprintf(stderr, "%s\n", test);
 			system(test);
 		}
