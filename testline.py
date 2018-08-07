@@ -31,6 +31,16 @@ def prc(phi):
 	y0 = v[idx0][1]
 	y1 = v[idx1][1]
 	return (y0 * (x1 - phi) + y1 * (phi - x0)) / (x1 - x0)
+def secprc(phi):
+	if np.any(phi) > 1 or np.any(phi) < 0:
+		raise ValueError("points were given to prc < 0 or > 1")
+	idx0 = np.where(vs[:,0] < phi)[0][-1]
+	idx1 = idx0 + 1
+	x0 = vs[idx0][0]
+	x1 = vs[idx1][0]
+	y0 = vs[idx0][1]
+	y1 = vs[idx1][1]
+	return (y0 * (x1 - phi) + y1 * (phi - x0)) / (x1 - x0)
 def linterp(x, x0, y0, x1, y1):
 	return (y0 * (x1 - x) + y1 * (x - x0)) / (x1 - x0)
 def slopeonprc(preidx):
@@ -48,7 +58,7 @@ np.vectorize(linterp)
 np.vectorize(slopeonprc)
 
 #calculations
-y = (2. * v[:,0]) - 1. - (2. * (delay / period))									#line for 2-cluster stability
+y = (2. * v[:,0]) - 1. - (2. * (delay / period)) #+ vs[:,1]									#line for 2-cluster stability
 bu = prc(1 - v[:,0] + v[:,1] + (2. * delay / period))								#basin of attraction for unequal time lags, formula f(1 - phi + f(phi) + (2 * delay / period))
 intersidxbu = np.where(np.diff(np.sign(bu - v[:,1])) != 0)[0]						#hopefully index of array holding line unequal time lags immediately BEFORE intersection w/ prc
 intersbu = linterp((intersidxbu + intersidxbu + 1) / 2., intersidxbu, y[intersidxbu], intersidxbu + 1, y[intersidxbu + 1])
@@ -60,7 +70,7 @@ else:
 intersidx = np.where(np.diff(np.sign(y - v[:,1])) != 0)[0]							#index of array holding line 2-cluster stability immediately BEFORE intersection w/ prc
 inters = linterp((intersidx + intersidx + 1) / 2., intersidx, y[intersidx], intersidx + 1, y[intersidx + 1])
 print "intrinsic period is", period
-print "line for 2-cluster stability, using formula (2 * phi - 1 - (2 * (delay/period)), is detected to intersect with PRC at these sets of coordinates:\n", np.dstack((v[:,0][intersidx], inters))
+print "line for 2-cluster stability, using formula (2 * phi - 1 - (2 * (delay/period)) + f2(phi), is detected to intersect with PRC at these sets of coordinates:\n", np.dstack((v[:,0][intersidx], inters))
 ycut = np.where(y >= np.amin(v[:,1]))[0][0]											#cutting off y so that it doesn't go below the min value of f(phi)
 slope = slopeonprc(intersidx)														#approximate slope of the prc on the point that it intersects with the line for 2-cluster stability
 print "slope of prc where it intersects with line for 2-cluster stability\n", slope
