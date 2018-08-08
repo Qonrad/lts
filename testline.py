@@ -59,6 +59,7 @@ np.vectorize(slopeonprc)
 
 #calculations
 y = (2. * v[:,0]) - 1. - (2. * (delay / period)) #+ vs[:,1]									#line for 2-cluster stability
+ys = (2. * v[:,0]) - 1. - (2. * (delay / period)) + vs[:,1]							#line 2.0 that takes second order resetting into account
 bu = prc(1 - v[:,0] + v[:,1] + (2. * delay / period))								#basin of attraction for unequal time lags, formula f(1 - phi + f(phi) + (2 * delay / period))
 intersidxbu = np.where(np.diff(np.sign(bu - v[:,1])) != 0)[0]						#hopefully index of array holding line unequal time lags immediately BEFORE intersection w/ prc
 intersbu = linterp((intersidxbu + intersidxbu + 1) / 2., intersidxbu, y[intersidxbu], intersidxbu + 1, y[intersidxbu + 1])
@@ -69,10 +70,14 @@ else:
 	syncnum = v[0][1]
 intersidx = np.where(np.diff(np.sign(y - v[:,1])) != 0)[0]							#index of array holding line 2-cluster stability immediately BEFORE intersection w/ prc
 inters = linterp((intersidx + intersidx + 1) / 2., intersidx, y[intersidx], intersidx + 1, y[intersidx + 1])
+intersidxs = np.where(np.diff(np.sign(ys - v[:,1])) != 0)[0]
+interss = linterp((intersidxs + intersidxs + 1) / 2., intersidxs, ys[intersidxs], intersidxs + 1, ys[intersidxs + 1])
 print "intrinsic period is", period
 print "line for 2-cluster stability, using formula (2 * phi - 1 - (2 * (delay/period)) + f2(phi), is detected to intersect with PRC at these sets of coordinates:\n", np.dstack((v[:,0][intersidx], inters))
 ycut = np.where(y >= np.amin(v[:,1]))[0][0]											#cutting off y so that it doesn't go below the min value of f(phi)
+yscut = np.where(ys >= np.amin(v[:,1]))[0][0]
 slope = slopeonprc(intersidx)														#approximate slope of the prc on the point that it intersects with the line for 2-cluster stability
+slopes = slopeonprc(intersidxs)
 print "slope of prc where it intersects with line for 2-cluster stability\n", slope
 print "curve is formula f(1 - phi + f(phi) + (2 * delay / period))"
 print "curve intersects with PRC at these sets of coordinates:\n", np.dstack((v[:,0][intersidxbu], intersbu))
@@ -91,7 +96,9 @@ if -1 < syncwnd and syncwnd < 1:
 	print "yes, so synchrony with no delay should be stable"
 else:
 	print "no, so synchrony without delay should not be stable"
-
+print "blue dotted thing is antiphase stabliity with second order accounted for"
+print "it intersects with prc at these sets of coords", np.dstack((v[:,0][intersidxs], interss))
+print "slope of prc where it intersects with line 2.0\n", slopes
 """
 print np.arange(0, len(v[:,0]) - 1, 1)
 all = slopeonprc(np.arange(0, len(v[:,0]) - 1, 1))
@@ -103,8 +110,10 @@ print "max", max
 #plotting
 ax1.plot(v[:,0], v[:,1],"k-") 														#main prc
 ax1.plot(((intersidx + intersidx + 1) / 2.) / (len(y) - 1), inters, 'ro')			#intersection of line for 2-cluster stability with prc
+ax1.plot(((intersidxs + intersidxs + 1) / 2.) / (len(ys) - 1), interss, 'ro')			#intersection of line 2.0 with prc
 ax1.plot(sync, syncnum, 'ro')														#point of synchrony stability on the prc
 ax1.plot(v[:,0], bu, "g--") 														#drawing line for basin of attraction for unequal time lags
+ax1.plot(v[yscut:,0], ys[yscut:], "b--")
 ax1.plot(v[ycut:,0], y[ycut:], "r--")												#line for 2-cluster stability
 plt.ylim(-0.2, 1.0)
 plt.show()
