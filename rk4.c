@@ -1007,7 +1007,7 @@ int main(int argc, char **argv) {
 		}
 		
 		makeallvolts(y, xx, nstep, FULLNAME);
-		
+		makefull(y, xx, nstep, "full.data");
 		if (arguments.verbose) {
 			dump_(vout);
 			makedata(y, xx, nstep, V, "v.data");
