@@ -112,8 +112,8 @@ ax1.plot(v[:,0], v[:,1],"k-") 														#main prc
 ax1.plot(((intersidx + intersidx + 1) / 2.) / (len(y) - 1), inters, 'ro')			#intersection of line for 2-cluster stability with prc
 ax1.plot(((intersidxs + intersidxs + 1) / 2.) / (len(ys) - 1), interss, 'ro')			#intersection of line 2.0 with prc
 ax1.plot(sync, syncnum, 'ro')														#point of synchrony stability on the prc
-ax1.plot(v[:,0], bu, "g--") 														#drawing line for basin of attraction for unequal time lags
-ax1.plot(v[yscut:,0], ys[yscut:], "b--")
+#ax1.plot(v[:,0], bu, "g--") 														#drawing line for basin of attraction for unequal time lags
+#ax1.plot(v[yscut:,0], ys[yscut:], "b--")
 ax1.plot(v[ycut:,0], y[ycut:], "r--")												#line for 2-cluster stability
 plt.ylim(-0.2, 1.0)
 plt.show()
