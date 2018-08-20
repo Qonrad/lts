@@ -64,16 +64,21 @@ y = (2. * v[:,0]) - 1. - (2. * (delay / period))									#line for 2-cluster sta
 ys = (2. * v[:,0]) - 1. - (2. * (delay / period)) + vs[:,1]							#line 2.0 that takes second order resetting into account
 bu = prc(1 - v[:,0] + v[:,1] + (2. * delay / period))								#basin of attraction for unequal time lags, formula f(1 - phi + f(phi) + (2 * delay / period))
 
+#printing explanations
+print "\nGREEN | Basin of attraction of unequal time lags | f(1 - phi + f(phi) + (2 * delay / period))"
+print "RED | 2-cluster mode stability w/out 2nd order | (2 * phi) - 1 - (2 * (delay / period))"
+print "BLUE | 2-cluster mode stability WITH 2nd order | (2 * phi) - 1 - (2 * (delay / period)) + f2(phi)"
+
 #finding points of intersection
 yinters = intersect(v[:,0], v[:,1], y)
 ysinters = intersect(v[:,0], v[:,1], ys)
 buinters = intersect(v[:,0], v[:,1], bu)
 
-#printing them
-print "\nAntiphase line w/out 2nd order intersects at points"
+#printing them extra nicely
+print "\nAntiphase line w/out 2nd order intersects at point(s)"
 for i in range(len(yinters[0])):
 	print yinters[:2,i], "with PRC slope", yinters[2][i]
-print "\nAntiphase line with 2nd order intersects at points"
+print "\nAntiphase line with 2nd order intersects at point(s)"
 for i in range(len(ysinters[0])):
 	print ysinters[:2,i], "with PRC slope", ysinters[2][i]
 print
@@ -153,6 +158,6 @@ ax1.plot(v[:,0], bu, "g--") 														#drawing line for basin of attraction 
 ax1.plot(v[yscut:,0], ys[yscut:], "b--")
 ax1.plot(v[ycut:,0], y[ycut:], "r--")												#line for 2-cluster stability
 ax1.plot(yinters[0], yinters[1], 'ro')												#intersection of line for 2-cluster stability with prc
-ax1.plot(ysinters[0], ysinters[1], 'ro')											#intersection of line 2.0 with prc
+ax1.plot(ysinters[0], ysinters[1], 'bo')											#intersection of line 2.0 with prc
 plt.ylim(-0.2, 1.0)
 plt.show()

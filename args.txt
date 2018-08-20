@@ -1,1 +1,1 @@
---divnn --iapp=2 --highprop=0-20000 --etime=20000 --delay=4.2 --onlyprc --prc=10 --graph --interval=500 random.data 20 
+--divnn --iapp=2 --highprop=0-20000 --etime=20000 --delay=3.4 --onlyprc --prc=10 --graph --interval=500 quest2.data 20 
