@@ -1,1 +1,1 @@
---divnn --iapp=2 --lowprop=0-5000 --etime=5000 --delay=0 random.data 20 
+--divnn --iapp=2 --lowprop=0-5000 --etime=5000 --delay=6.2 random.data 20 
