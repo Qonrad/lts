@@ -66,7 +66,7 @@ bu = prc(1 - v[:,0] + v[:,1] + (2. * delay / period))								#basin of attractio
 
 #printing explanations
 print "\nGREEN | Basin of attraction of unequal time lags | f(1 - phi + f(phi) + (2 * delay / period))"
-print "  RED | 2-cluster mode stability w/out 2nd order | (2 * phi) - 1 - (2 * (delay / period))"
+print "RED   | 2-cluster mode stability w/out 2nd order | (2 * phi) - 1 - (2 * (delay / period))"
 print "BLUE  | 2-cluster mode stability WITH 2nd order  | (2 * phi) - 1 - (2 * (delay / period)) + f2(phi)"
 
 #finding points of intersection
