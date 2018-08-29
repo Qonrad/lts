@@ -20,7 +20,7 @@
 #define E_SYN  -80.0
 #define G_NA 100.0 /* mS/cm2*/
 #define G_K   80.0
-#define G_M   2				// Was previously almost always 2, McCarthy paper says "between 0 and 4", gmi
+#define G_M   1.85				// Was previously almost always 2, McCarthy paper says "between 0 and 4", gmi
 #define G_L   0.1
 #define G_SYN  0.165		//McCarthy gi_i baseline = 0.165, low-dose Propofol = 0.25, high-dose Propofol = 0.5
 #define TAUSYN 5			//McCarthy taui baseline = 5.0, low-dose Propofol = 10, high-dose Propofol = 20
