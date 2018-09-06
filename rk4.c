@@ -288,8 +288,28 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 	double iapp, gsyn, tau;
 	int i, j;
 	extern double *pert;
-	
-	
+
+	if (arguments.highprop || arguments.lowprop) {
+		if (time > arguments.highstart && time < arguments.highend) {
+			gsyn = HIGHPROP_GSYN;
+			tau = HIGHPROP_TAU;
+		}
+		else if (time > arguments.lowstart && time < arguments.lowend) {
+			gsyn = LOWPROP_GSYN;
+			tau = LOWPROP_TAU;
+		}
+		else {	
+			gsyn = G_SYN;
+			tau = TAUSYN;
+		}
+	}
+
+	else {	
+		gsyn = G_SYN;
+		tau = TAUSYN;
+	}
+
+	/*
 	if (arguments.highprop) {	//this should make it such that highprop will override lowprop
 		gsyn = ((time > arguments.highstart && time < arguments.highend)) ? HIGHPROP_GSYN : G_SYN;
 		tau = ((time > arguments.highstart && time < arguments.highend)) ? HIGHPROP_TAU : TAUSYN;
@@ -302,7 +322,7 @@ void derivs(double time, double *y, double *dydx, double *oldv, double* weight) 
 		gsyn = G_SYN;
 		tau = TAUSYN;
 	}
-
+	*/
 	for (i = 0; i < nn; i++) {
 		
 		if (i >= I_APP_NEURONS && USE_I_APP) {
